@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://my-quiz-m4fn.vercel.app/sitemap.xml
+Sitemap: https://smart-quiz-lime.vercel.app/sitemap.xml
