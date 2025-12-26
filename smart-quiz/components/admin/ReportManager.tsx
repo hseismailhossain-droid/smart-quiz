@@ -1,16 +1,21 @@
 
 import React, { useState } from 'react';
-import { MessageSquare, CheckCircle, Clock, Filter, Search, User, Trash2, AlertCircle } from 'lucide-react';
+import { MessageSquare, CheckCircle, Clock, Filter, Search, User, Trash2, AlertCircle, X } from 'lucide-react';
 import { UserReport } from '../../types';
+import ConfirmModal from './ConfirmModal';
 
 interface ReportManagerProps {
   reports: UserReport[];
   onResolve: (id: string) => void;
+  onDelete: (id: string) => void;
 }
 
-const ReportManager: React.FC<ReportManagerProps> = ({ reports, onResolve }) => {
+const ReportManager: React.FC<ReportManagerProps> = ({ reports, onResolve, onDelete }) => {
   const [filter, setFilter] = useState<'all' | 'pending' | 'resolved'>('pending');
   const [search, setSearch] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState<{show: boolean, id: string, name: string}>({
+    show: false, id: '', name: ''
+  });
 
   const filteredReports = reports.filter(r => {
     const matchesFilter = filter === 'all' || r.status === filter;
@@ -20,6 +25,17 @@ const ReportManager: React.FC<ReportManagerProps> = ({ reports, onResolve }) => 
 
   return (
     <div className="space-y-10 animate-in fade-in duration-500 pb-20 font-['Hind_Siliguri']">
+      <ConfirmModal 
+        show={deleteConfirm.show}
+        title="রিপোর্ট ডিলিট করুন"
+        message={`আপনি কি নিশ্চিতভাবে "${deleteConfirm.name}" এর পাঠানো রিপোর্টটি ডিলিট করতে চান?`}
+        onConfirm={() => {
+          onDelete(deleteConfirm.id);
+          setDeleteConfirm({ show: false, id: '', name: '' });
+        }}
+        onCancel={() => setDeleteConfirm({ show: false, id: '', name: '' })}
+      />
+
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h2 className="text-3xl font-black text-slate-900 leading-tight">ইউজার রিপোর্ট ম্যানেজার</h2>
@@ -70,9 +86,17 @@ const ReportManager: React.FC<ReportManagerProps> = ({ reports, onResolve }) => 
                       </p>
                     </div>
                   </div>
-                  <div className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2 ${report.status === 'resolved' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
-                    {report.status === 'resolved' ? <CheckCircle size={10} /> : <Clock size={10} />}
-                    {report.status}
+                  <div className="flex gap-2">
+                    <div className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2 ${report.status === 'resolved' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
+                      {report.status === 'resolved' ? <CheckCircle size={10} /> : <Clock size={10} />}
+                      {report.status}
+                    </div>
+                    <button 
+                      onClick={() => setDeleteConfirm({ show: true, id: report.id, name: report.userName })}
+                      className="p-1.5 bg-rose-50 text-rose-500 rounded-lg hover:bg-rose-500 hover:text-white transition-all opacity-0 group-hover:opacity-100"
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </div>
                 </div>
 
@@ -84,7 +108,7 @@ const ReportManager: React.FC<ReportManagerProps> = ({ reports, onResolve }) => 
              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-[10px] text-slate-400 font-black uppercase tracking-widest">
                   <Clock size={12} />
-                  {report.timestamp ? new Date(report.timestamp.toDate()).toLocaleDateString('bn-BD') : 'এখন মাত্র'}
+                  {report.timestamp ? new Date(report.timestamp.seconds * 1000).toLocaleDateString('bn-BD') : 'এখন মাত্র'}
                 </div>
                 {report.status === 'pending' && (
                   <button 
