@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, BookOpen, Image as ImageIcon, 
   Users, Settings as SettingsIcon, LogOut, Menu, X, Trophy, LogIn, MessageSquare, CreditCard, LayoutGrid, Home as HomeIcon
@@ -15,6 +15,8 @@ import WithdrawManager from './WithdrawManager';
 import CategoryManager from './CategoryManager';
 import HomeManagement from './HomeManagement';
 import { DepositRequest, Notification, UserReport, WithdrawRequest } from '../../types';
+import { db } from '../../services/firebase';
+import { collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 
 interface AdminLayoutProps {
   onExit: () => void;
@@ -22,36 +24,78 @@ interface AdminLayoutProps {
   onSendNotification: (title: string, message: string) => void;
   onDeleteNotification: (id: string) => void;
   onDeleteQuiz: (id: string, type: 'mock' | 'live' | 'paid' | 'lesson' | 'special') => void;
-  onResolveReport: (id: string) => void;
   notifications: Notification[];
-  depositRequests: DepositRequest[];
-  withdrawRequests: WithdrawRequest[];
-  userReports: UserReport[];
-  onApproveDeposit: (id: string) => void;
-  onRejectDeposit: (id: string) => void;
-  onApproveWithdraw: (id: string) => void;
-  onRejectWithdraw: (id: string) => void;
 }
 
 const AdminLayout: React.FC<AdminLayoutProps> = ({ 
-  onExit, onLogout, onSendNotification, onDeleteNotification, onDeleteQuiz, onResolveReport, notifications, depositRequests, withdrawRequests, userReports, onApproveDeposit, onRejectDeposit, onApproveWithdraw, onRejectWithdraw 
+  onExit, onLogout, onSendNotification, onDeleteNotification, onDeleteQuiz, notifications 
 }) => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'quizzes' | 'categories' | 'results' | 'ads' | 'users' | 'settings' | 'reports' | 'withdraws' | 'home_mgmt'>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
+  // Real-time states
+  const [depositRequests, setDepositRequests] = useState<DepositRequest[]>([]);
+  const [withdrawRequests, setWithdrawRequests] = useState<WithdrawRequest[]>([]);
+  const [userReports, setUserReports] = useState<UserReport[]>([]);
+
+  useEffect(() => {
+    const unsubDeposits = onSnapshot(query(collection(db, 'deposit_requests'), orderBy('timestamp', 'desc')), (snap) => {
+      setDepositRequests(snap.docs.map(d => ({ id: d.id, ...d.data() } as DepositRequest)));
+    });
+    const unsubWithdraws = onSnapshot(query(collection(db, 'withdraw_requests'), orderBy('timestamp', 'desc')), (snap) => {
+      setWithdrawRequests(snap.docs.map(d => ({ id: d.id, ...d.data() } as WithdrawRequest)));
+    });
+    const unsubReports = onSnapshot(query(collection(db, 'user_reports'), orderBy('timestamp', 'desc')), (snap) => {
+      setUserReports(snap.docs.map(d => ({ id: d.id, ...d.data() } as UserReport)));
+    });
+
+    return () => { unsubDeposits(); unsubWithdraws(); unsubReports(); };
+  }, []);
+
+  // Handlers
+  const handleApproveDeposit = async (id: string) => {
+    const req = depositRequests.find(r => r.id === id);
+    if (!req) return;
+    await updateDoc(doc(db, 'deposit_requests', id), { status: 'approved' });
+  };
+
+  const handleRejectDeposit = async (id: string) => {
+    await updateDoc(doc(db, 'deposit_requests', id), { status: 'rejected' });
+  };
+
+  const handleApproveWithdraw = async (id: string) => {
+    await updateDoc(doc(db, 'withdraw_requests', id), { status: 'approved' });
+  };
+
+  const handleRejectWithdraw = async (id: string) => {
+    await updateDoc(doc(db, 'withdraw_requests', id), { status: 'rejected' });
+  };
+
+  const handleDeleteWithdraw = async (id: string) => {
+    await deleteDoc(doc(db, 'withdraw_requests', id));
+  };
+
+  const handleResolveReport = async (id: string) => {
+    await updateDoc(doc(db, 'user_reports', id), { status: 'resolved' });
+  };
+
+  const handleDeleteReport = async (id: string) => {
+    await deleteDoc(doc(db, 'user_reports', id));
+  };
+
   const renderContent = () => {
     switch (activeTab) {
-      case 'dashboard': return <AdminDashboard onNavigate={setActiveTab} requests={depositRequests} onApprove={onApproveDeposit} />;
+      case 'dashboard': return <AdminDashboard onNavigate={setActiveTab} requests={depositRequests} onApprove={handleApproveDeposit} />;
       case 'quizzes': return <QuizManager onDeleteQuiz={onDeleteQuiz} />;
       case 'categories': return <CategoryManager />;
       case 'results': return <ResultManager />;
       case 'home_mgmt': return <HomeManagement />;
       case 'ads': return <AdsManager />;
-      case 'users': return <UserWalletManager requests={depositRequests} onApprove={onApproveDeposit} onReject={onRejectDeposit} />;
-      case 'withdraws': return <WithdrawManager requests={withdrawRequests} onApprove={onApproveWithdraw} onReject={onRejectWithdraw} />;
+      case 'users': return <UserWalletManager requests={depositRequests} onApprove={handleApproveDeposit} onReject={handleRejectDeposit} />;
+      case 'withdraws': return <WithdrawManager requests={withdrawRequests} onApprove={handleApproveWithdraw} onReject={handleRejectWithdraw} onDelete={handleDeleteWithdraw} />;
       case 'settings': return <SettingsManager onSendNotification={onSendNotification} onDeleteNotification={onDeleteNotification} notifications={notifications} />;
-      case 'reports': return <ReportManager reports={userReports} onResolve={onResolveReport} />;
-      default: return <AdminDashboard onNavigate={setActiveTab} requests={depositRequests} onApprove={onApproveDeposit} />;
+      case 'reports': return <ReportManager reports={userReports} onResolve={handleResolveReport} onDelete={handleDeleteReport} />;
+      default: return <AdminDashboard onNavigate={setActiveTab} requests={depositRequests} onApprove={handleApproveDeposit} />;
     }
   };
 
