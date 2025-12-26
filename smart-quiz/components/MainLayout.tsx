@@ -125,7 +125,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
         <div className="fixed inset-0 bg-white z-[300] flex flex-col">
            <div className="p-5 flex items-center justify-between border-b bg-white">
               <button onClick={() => setActiveLesson(null)} className="p-2.5 bg-gray-50 rounded-2xl"><ArrowLeft size={24} /></button>
-              <span className="font-black text-gray-800">à¦²à¦¿à¦¸à¦¨ à¦®à§‹à¦¡</span>
+              <span className="font-black text-gray-800">লিসন মোড</span>
               <div className="w-10"></div>
            </div>
            <div className="flex-grow overflow-y-auto p-6 no-scrollbar">
@@ -139,7 +139,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
         <div className="fixed inset-0 bg-black/60 z-[2000] backdrop-blur-md flex items-end justify-center">
           <div className="bg-white w-full max-w-md rounded-t-[40px] p-8 animate-in slide-in-from-bottom-24 max-h-[85vh] flex flex-col shadow-2xl">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-black text-gray-900">à¦¨à§‹à¦Ÿà¦¿à¦«à¦¿à¦•à§‡à¦¶à¦¨</h3>
+              <h3 className="text-xl font-black text-gray-900">নোটিফিকেশন</h3>
               <button onClick={() => setShowNotifications(false)} className="p-3 bg-gray-100 rounded-full text-slate-400"><X size={20} /></button>
             </div>
             <div className="flex-grow overflow-y-auto space-y-4 no-scrollbar pb-10">
@@ -154,7 +154,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
               {notifications.length === 0 && (
                 <div className="py-20 text-center flex flex-col items-center">
                    <div className="w-16 h-16 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center mb-4"><BellOff size={32}/></div>
-                   <p className="text-slate-300 font-black uppercase text-[10px] tracking-widest">à¦•à§‹à¦¨à§‹ à¦¨à§‹à¦Ÿà¦¿à¦«à¦¿à¦•à§‡à¦¶à¦¨ à¦¨à§‡à¦‡</p>
+                   <p className="text-slate-300 font-black uppercase text-[10px] tracking-widest">কোনো নোটিফিকেশন নেই</p>
                 </div>
               )}
             </div>
