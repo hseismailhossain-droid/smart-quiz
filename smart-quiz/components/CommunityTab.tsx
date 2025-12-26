@@ -140,11 +140,9 @@ const CommunityTab: React.FC<CommunityTabProps> = ({ user }) => {
         await deleteDoc(doc(db, 'posts', id));
       } else if (type === 'story') {
         await deleteDoc(doc(db, 'stories', id));
-        // যদি স্টোরি গ্রুপে আর কোনো স্টোরি না থাকে বা একটিই থাকে, ভিউয়ার বন্ধ করুন
         if (activeStoryGroup && activeStoryGroup.items.length <= 1) {
           setActiveStoryGroup(null);
         } else if (activeStoryGroup) {
-          // রিমুভ করে নেক্সট টা দেখান
           const updatedItems = activeStoryGroup.items.filter((item: any) => item.id !== id);
           setActiveStoryGroup({ ...activeStoryGroup, items: updatedItems });
           setCurrentStoryIndex(Math.max(0, currentStoryIndex - 1));
@@ -210,14 +208,25 @@ const CommunityTab: React.FC<CommunityTabProps> = ({ user }) => {
   };
 
   const handleShare = async (post: any) => {
-    const shareText = `🚀 ${post.userName} এর পোস্টটি দেখুন GEN Z Learning অ্যাপে:\n\n"${post.content}"\n\nজয়েন করুন: ${window.location.origin}`;
+    const shareText = `🚀 ${post.userName} এর এই পোস্টটি দেখুন Smart Quiz Pro অ্যাপে:\n\n"${post.content}"\n\nবিস্তারিত জানতে আজই জয়েন করুন: ${window.location.origin}`;
+    
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'GEN Z Learning', text: shareText, url: window.location.origin });
-      } catch (err) {}
+        await navigator.share({
+          title: 'Smart Quiz Pro',
+          text: shareText,
+          url: window.location.origin
+        });
+      } catch (err) {
+        console.log('Error sharing:', err);
+      }
     } else {
-      navigator.clipboard.writeText(shareText);
-      alert('লিঙ্ক কপি করা হয়েছে!');
+      try {
+        await navigator.clipboard.writeText(shareText);
+        alert('শেয়ার লিঙ্ক কপি করা হয়েছে!');
+      } catch (err) {
+        console.log('Clipboard error:', err);
+      }
     }
   };
 
@@ -470,7 +479,6 @@ const CommunityTab: React.FC<CommunityTabProps> = ({ user }) => {
                     <span className="font-bold text-sm">{activeStoryGroup.userName}</span>
                  </div>
                  <div className="flex items-center gap-2">
-                    {/* Story Delete Button for owner */}
                     {activeStoryGroup.uid === auth.currentUser?.uid && (
                       <button 
                         onClick={(e) => {
@@ -503,7 +511,6 @@ const CommunityTab: React.FC<CommunityTabProps> = ({ user }) => {
                  }}></div>
               </div>
 
-              {/* View Count in Story */}
               <div className="absolute bottom-10 left-1/2 -translate-x-1/2 bg-black/40 backdrop-blur-md px-4 py-2 rounded-full flex items-center gap-2 text-white/80">
                  <Eye size={16} />
                  <span className="text-[12px] font-black">{activeStoryGroup.items[currentStoryIndex].views || 0} জন দেখেছেন</span>
