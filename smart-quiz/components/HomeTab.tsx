@@ -11,7 +11,7 @@ interface HomeTabProps {
   lessons: Lesson[];
   onShowNotifications: () => void;
   onLogout: () => void;
-  onSubjectSelect: (subject: string, isLive?: boolean, isPaid?: boolean, fee?: number, quizId?: string) => void;
+  onSubjectSelect: (subject: string, isLive?: boolean, isPaid?: boolean, fee?: number, quizId?: string, collectionName?: string) => void;
   onLessonSelect: (lesson: Lesson) => void;
   onEditProfile: (view?: 'profile' | 'report' | 'privacy') => void;
   onSubmitDeposit: (amount: number, method: 'bkash' | 'nagad', trxId: string) => void;
@@ -26,7 +26,6 @@ const HomeTab: React.FC<HomeTabProps> = ({
   const [adminNotices, setAdminNotices] = useState<AdminNotice[]>([]);
   const [activePolls, setActivePolls] = useState<Poll[]>([]);
   
-  // Wallet States
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [walletView, setWalletView] = useState<'recharge' | 'withdraw'>('recharge');
   const [amount, setAmount] = useState('');
@@ -101,7 +100,6 @@ const HomeTab: React.FC<HomeTabProps> = ({
 
   return (
     <div className="p-4 space-y-6 bg-white pb-24 font-['Hind_Siliguri']">
-      {/* Header */}
       <div className="flex justify-between items-center px-1 py-2">
         <div className="flex items-center gap-4">
           <div className="relative">
@@ -129,7 +127,6 @@ const HomeTab: React.FC<HomeTabProps> = ({
         </div>
       </div>
 
-      {/* Wallet Card */}
       <div className="bg-emerald-900 p-8 rounded-[48px] text-white shadow-2xl relative overflow-hidden group">
          <div className="relative z-10">
             <div className="flex justify-between items-center mb-6">
@@ -148,7 +145,6 @@ const HomeTab: React.FC<HomeTabProps> = ({
          </div>
       </div>
 
-      {/* Admin Notices Slider */}
       {adminNotices.length > 0 && (
         <div className="px-1">
           <h4 className="font-black text-gray-900 text-xl flex items-center gap-2 mb-4">
@@ -172,7 +168,6 @@ const HomeTab: React.FC<HomeTabProps> = ({
         </div>
       )}
 
-      {/* Stats Grid */}
       <div className="grid grid-cols-4 gap-3 bg-gray-50 p-6 rounded-[44px] border border-gray-100 mx-1">
         <StatItem icon={<Trophy className="text-yellow-500" size={18}/>} value={user.totalPoints?.toString() || "0"} label="পয়েন্ট" />
         <StatItem icon={<BookOpen className="text-blue-500" size={18}/>} value={user.playedQuizzes?.length.toString() || "0"} label="পরীক্ষা" />
@@ -180,7 +175,6 @@ const HomeTab: React.FC<HomeTabProps> = ({
         <StatItem icon={<Flame className="text-orange-500" size={18}/>} value={user.streak?.toString() || "0"} label="স্ট্রিক" />
       </div>
 
-      {/* Invite Friends Card */}
       <div className="px-1">
         <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-8 rounded-[48px] text-white shadow-xl relative overflow-hidden group active:scale-[0.98] transition-all cursor-pointer" onClick={handleShareApp}>
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl"></div>
@@ -201,7 +195,6 @@ const HomeTab: React.FC<HomeTabProps> = ({
         </div>
       </div>
 
-      {/* Interactive Poll Section */}
       {activePolls.length > 0 && (
         <div className="px-1">
           {activePolls.map(poll => {
@@ -243,14 +236,13 @@ const HomeTab: React.FC<HomeTabProps> = ({
         </div>
       )}
 
-      {/* Special Quizzes Section */}
       <div className="px-1">
         <h4 className="font-black text-gray-900 text-xl flex items-center gap-2 mb-6">
           <Star size={24} className="text-amber-500 fill-amber-500" /> স্পেশাল কুইজ
         </h4>
         <div className="flex gap-5 overflow-x-auto pb-6 -mx-1 px-1 snap-x no-scrollbar">
           {specialQuizzes.length > 0 ? specialQuizzes.map((q) => (
-            <button key={q.id} onClick={() => onSubjectSelect(q.title, false, false, 0, q.id)} className={`min-w-[280px] bg-gradient-to-br ${q.color || 'from-emerald-700 to-emerald-900'} p-8 rounded-[44px] text-white text-left snap-center shadow-2xl relative overflow-hidden group`}>
+            <button key={q.id} onClick={() => onSubjectSelect(q.title, false, false, 0, q.id, 'admin_special_quizzes')} className={`min-w-[280px] bg-gradient-to-br ${q.color || 'from-emerald-700 to-emerald-900'} p-8 rounded-[44px] text-white text-left snap-center shadow-2xl relative overflow-hidden group`}>
               <h5 className="text-2xl font-black mb-2 leading-tight pr-4">{q.title}</h5>
               <p className="text-[10px] font-black uppercase tracking-widest bg-white/20 px-4 py-2 rounded-full border border-white/20 inline-block">{q.questionsCount || 10}টি প্রশ্ন</p>
             </button>
@@ -258,7 +250,6 @@ const HomeTab: React.FC<HomeTabProps> = ({
         </div>
       </div>
 
-      {/* Wallet Modal */}
       {showWalletModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[1000] flex items-end justify-center">
           <div className="bg-white w-full max-w-md rounded-t-[44px] p-8 animate-in slide-in-from-bottom duration-300 shadow-2xl">
@@ -283,7 +274,6 @@ const HomeTab: React.FC<HomeTabProps> = ({
         </div>
       )}
 
-      {/* Logout Confirmation */}
       {showLogoutConfirm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[1000] flex items-center justify-center p-6">
            <div className="bg-white w-full max-w-xs rounded-[40px] p-8 text-center animate-in zoom-in duration-200">
