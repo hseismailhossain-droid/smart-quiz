@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Smartphone, Bell, Save, Send, CheckCircle2, Clock, Palette, Sparkles, Loader2, Info, Trash2, BellOff, AlertTriangle, X, Eye, EyeOff, CreditCard } from 'lucide-react';
 import { db } from '../../services/firebase';
@@ -66,9 +65,9 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({ onSendNotification, o
         ...payments,
         lastUpdated: Date.now()
       });
-      alert("à¦ªà§‡à¦®à§‡à¦¨à§à¦Ÿ à¦¸à§‡à¦Ÿà¦¿à¦‚à¦¸ à¦¸à¦«à¦²à¦­à¦¾à¦¬à§‡ à¦¸à§‡à¦­ à¦•à¦°à¦¾ à¦¹à§Ÿà§‡à¦›à§‡!");
+      alert("পেমেন্ট সেটিংস সফলভাবে সেভ করা হয়েছে!");
     } catch (e) {
-      alert("à¦¸à§‡à¦­ à¦•à¦°à¦¤à§‡ à¦¸à¦®à¦¸à§à¦¯à¦¾ à¦¹à§Ÿà§‡à¦›à§‡à¥¤");
+      alert("সেভ করতে সমস্যা হয়েছে।");
     } finally {
       setIsSaving(false);
     }
@@ -89,7 +88,7 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({ onSendNotification, o
   };
 
   const handleSendNotification = async () => {
-    if (!notifTitle.trim() || !notifMessage.trim()) return alert("à¦Ÿà¦¾à¦‡à¦Ÿà§‡à¦² à¦“ à¦®à§‡à¦¸à§‡à¦œ à¦¦à¦¿à¦¨");
+    if (!notifTitle.trim() || !notifMessage.trim()) return alert("টাইটেল ও মেসেজ দিন");
     setIsSending(true);
     try {
       await onSendNotification(notifTitle, notifMessage);
@@ -98,7 +97,7 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({ onSendNotification, o
       setNotifMessage('');
       setTimeout(() => setShowSuccess(false), 3000);
     } catch (e) {
-      alert("à¦¨à§‹à¦Ÿà¦¿à¦«à¦¿à¦•à§‡à¦¶à¦¨ à¦ªà¦¾à¦ à¦¾à¦¨à§‹ à¦¯à¦¾à§Ÿà¦¨à¦¿à¥¤");
+      alert("নোটিফিকেশন পাঠানো যায়নি।");
     } finally {
       setIsSending(false);
     }
@@ -108,8 +107,8 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({ onSendNotification, o
     <div className="space-y-10 animate-in fade-in duration-500 pb-20 font-['Hind_Siliguri']">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
         <div>
-          <h2 className="text-3xl font-black text-slate-900 leading-tight">à¦¸à¦¿à¦¸à§à¦Ÿà§‡à¦® à¦¸à§‡à¦Ÿà¦¿à¦‚à¦¸</h2>
-          <p className="text-slate-400 font-bold text-sm">à¦…à§à¦¯à¦¾à¦ªà§‡à¦° à¦ªà§‡à¦®à§‡à¦¨à§à¦Ÿ à¦“ à¦¨à§‹à¦Ÿà¦¿à¦«à¦¿à¦•à§‡à¦¶à¦¨ à¦¨à¦¿à§Ÿà¦¨à§à¦¤à§à¦°à¦£ à¦•à¦°à§à¦¨</p>
+          <h2 className="text-3xl font-black text-slate-900 leading-tight">সিস্টেম সেটিংস</h2>
+          <p className="text-slate-400 font-bold text-sm">অ্যাপের পেমেন্ট ও নোটিফিকেশন নিয়ন্ত্রণ করুন</p>
         </div>
       </div>
 
@@ -120,35 +119,35 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({ onSendNotification, o
             <div className="flex items-center gap-3 mb-10">
               <div className="p-3 bg-emerald-50 rounded-2xl text-emerald-700 shadow-sm"><Smartphone size={24} /></div>
               <div>
-                <h3 className="text-xl font-black text-slate-900">à¦ªà§‡à¦®à§‡à¦¨à§à¦Ÿ à¦®à§‡à¦¥à¦¡à¦¸à¦®à§‚à¦¹</h3>
+                <h3 className="text-xl font-black text-slate-900">পেমেন্ট মেথডসমূহ</h3>
                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Payment Gateway Config</p>
               </div>
             </div>
 
             <div className="space-y-6 flex-grow">
                <PaymentInput 
-                 label="à¦¬à¦¿à¦•à¦¾à¦¶ (bKash)" 
+                 label="বিকাশ (bKash)" 
                  value={payments.bkash.number} 
                  active={payments.bkash.active} 
                  onNumberChange={(v) => updatePaymentNumber('bkash', v)}
                  onToggle={() => togglePaymentActive('bkash')}
                />
                <PaymentInput 
-                 label="à¦¨à¦—à¦¦ (Nagad)" 
+                 label="নগদ (Nagad)" 
                  value={payments.nagad.number} 
                  active={payments.nagad.active} 
                  onNumberChange={(v) => updatePaymentNumber('nagad', v)}
                  onToggle={() => togglePaymentActive('nagad')}
                />
                <PaymentInput 
-                 label="à¦°à¦•à§‡à¦Ÿ (Rocket)" 
+                 label="রকেট (Rocket)" 
                  value={payments.rocket.number} 
                  active={payments.rocket.active} 
                  onNumberChange={(v) => updatePaymentNumber('rocket', v)}
                  onToggle={() => togglePaymentActive('rocket')}
                />
                <PaymentInput 
-                 label="à¦‰à¦ªà¦¾à¦¯à¦¼ (Upay)" 
+                 label="উপায় (Upay)" 
                  value={payments.upay.number} 
                  active={payments.upay.active} 
                  onNumberChange={(v) => updatePaymentNumber('upay', v)}
@@ -162,7 +161,7 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({ onSendNotification, o
                 disabled={isSaving} 
                 className="w-full bg-emerald-700 text-white py-6 rounded-[28px] font-black text-lg shadow-xl active:scale-95 transition-all"
               >
-                {isSaving ? <Loader2 className="animate-spin mx-auto" /> : 'à¦¸à§‡à¦­ à¦•à¦°à§à¦¨'}
+                {isSaving ? <Loader2 className="animate-spin mx-auto" /> : 'সেভ করুন'}
               </button>
             </div>
           </div>
@@ -173,7 +172,7 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({ onSendNotification, o
            <div className="bg-white p-8 md:p-10 rounded-[44px] shadow-sm border border-slate-100">
               <div className="flex items-center gap-3 mb-8">
                 <div className="p-3 bg-blue-50 rounded-2xl text-blue-700 shadow-sm"><Bell size={24} /></div>
-                <h3 className="text-xl font-black text-slate-900">à¦¨à§‹à¦Ÿà¦¿à¦«à¦¿à¦•à§‡à¦¶à¦¨ à¦ªà¦¾à¦ à¦¾à¦¨</h3>
+                <h3 className="text-xl font-black text-slate-900">নোটিফিকেশন পাঠান</h3>
               </div>
               
               <div className="space-y-6 mb-10">
@@ -181,13 +180,13 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({ onSendNotification, o
                   type="text" 
                   value={notifTitle} 
                   onChange={(e) => setNotifTitle(e.target.value)} 
-                  placeholder="à¦¨à§‹à¦Ÿà¦¿à¦«à¦¿à¦•à§‡à¦¶à¦¨ à¦Ÿà¦¾à¦‡à¦Ÿà§‡à¦²" 
+                  placeholder="নোটিফিকেশন টাইটেল" 
                   className="w-full bg-slate-50 border border-slate-100 p-5 rounded-[24px] font-bold outline-none" 
                  />
                  <textarea 
                   value={notifMessage} 
                   onChange={(e) => setNotifMessage(e.target.value)} 
-                  placeholder="à¦†à¦ªà¦¨à¦¾à¦° à¦®à§‡à¦¸à§‡à¦œ..." 
+                  placeholder="আপনার মেসেজ..." 
                   className="w-full bg-slate-50 border border-slate-100 p-6 rounded-[32px] font-bold h-32 outline-none" 
                  />
                  <button 
@@ -195,14 +194,14 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({ onSendNotification, o
                   disabled={isSending || !notifTitle.trim()} 
                   className="w-full py-5 bg-blue-600 text-white rounded-[28px] font-black text-lg flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-all"
                  >
-                    {isSending ? <Loader2 className="animate-spin" /> : <><Send size={22} /> à¦ªà¦¾à¦ à¦¾à¦¨</>}
+                    {isSending ? <Loader2 className="animate-spin" /> : <><Send size={22} /> পাঠান</>}
                  </button>
               </div>
 
               {/* Sent Notifications List */}
               <div className="pt-8 border-t border-slate-100">
                 <h4 className="text-sm font-black text-slate-800 mb-6 flex items-center gap-2">
-                   <Clock size={16} /> à¦ªà¦¾à¦ à¦¾à¦¨à§‹ à¦¨à§‹à¦Ÿà¦¿à¦«à¦¿à¦•à§‡à¦¶à¦¨ à¦²à¦¿à¦¸à§à¦Ÿ
+                   <Clock size={16} /> পাঠানো নোটিফিকেশন লিস্ট
                 </h4>
                 <div className="space-y-4 max-h-[400px] overflow-y-auto no-scrollbar pr-2">
                   {notifications.map(n => (
@@ -215,12 +214,12 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({ onSendNotification, o
                        </button>
                        <h5 className="font-black text-slate-900 text-xs pr-8">{n.title}</h5>
                        <p className="text-[10px] text-slate-500 mt-1 line-clamp-2">{n.message}</p>
-                       <p className="text-[8px] font-black text-slate-300 mt-2 uppercase">{n.time || 'à¦ªà¦¾à¦ à¦¾à¦¨à§‹ à¦¹à§Ÿà§‡à¦›à§‡'}</p>
+                       <p className="text-[8px] font-black text-slate-300 mt-2 uppercase">{n.time || 'পাঠানো হয়েছে'}</p>
                     </div>
                   ))}
                   {notifications.length === 0 && (
                     <div className="text-center py-10 text-slate-300 font-bold text-xs uppercase tracking-widest">
-                       à¦•à§‹à¦¨à§‹ à¦¨à§‹à¦Ÿà¦¿à¦«à¦¿à¦•à§‡à¦¶à¦¨ à¦ªà¦¾à¦“à§Ÿà¦¾ à¦¯à¦¾à§Ÿà¦¨à¦¿
+                       কোনো নোটিফিকেশন পাওয়া যায়নি
                     </div>
                   )}
                 </div>
