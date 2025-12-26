@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { BarChart3, Image as ImageIcon, Plus, Trash2, Save, Loader2, X, Send, Camera } from 'lucide-react';
 import { db } from '../../services/firebase';
@@ -85,7 +84,8 @@ const HomeManagement: React.FC = () => {
     try {
       const col = deleteConfirm.type === 'poll' ? 'admin_polls' : 'admin_notices';
       await deleteDoc(doc(db, col, deleteConfirm.id));
-      setDeleteConfirm({ show: false, type: 'poll', id: '', title: '' });
+      // Fix: Use functional update to ensure all required state properties are maintained
+      setDeleteConfirm(prev => ({ ...prev, show: false, id: '', title: '' }));
     } catch (e) { alert("মুছে ফেলা যায়নি।"); }
   };
 
@@ -96,7 +96,8 @@ const HomeManagement: React.FC = () => {
         title="ডিলিট নিশ্চিত করুন"
         message={`আপনি কি নিশ্চিতভাবে "${deleteConfirm.title}" মুছে ফেলতে চান?`}
         onConfirm={executeDelete}
-        onCancel={() => setDeleteConfirm({ show: false, id: '', title: '' })}
+        // Fix: Use functional update to ensure all required state properties are maintained
+        onCancel={() => setDeleteConfirm(prev => ({ ...prev, show: false, id: '', title: '' }))}
       />
 
       <div className="flex flex-col md:flex-row justify-between items-center gap-6">
