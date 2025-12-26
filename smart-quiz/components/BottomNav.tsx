@@ -1,6 +1,6 @@
 
-import React from 'react';
 import { Home, Users, Edit, Bookmark, Trophy, Activity } from 'lucide-react';
+import React from 'react';
 
 interface BottomNavProps {
   activeTab: 'home' | 'community' | 'exam' | 'progress' | 'leaderboard' | 'history';
@@ -12,7 +12,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
     { id: 'home', label: 'হোম', icon: Home },
     { id: 'community', label: 'ফিড', icon: Users },
     { id: 'exam', label: 'পরীক্ষা', icon: Edit },
-    { id: 'progress', label: 'প্রোগ্রেস', icon: Activity },
+    { id: 'progress', label: 'প্রগ্রেস', icon: Activity },
     { id: 'leaderboard', label: 'র‍্যাংক', icon: Trophy },
     { id: 'history', label: 'হিস্ট্রি', icon: Bookmark },
   ];
