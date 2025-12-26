@@ -26,6 +26,7 @@ interface MainLayoutProps {
     isPaid?: boolean;
     entryFee?: number;
     quizId?: string;
+    collection?: string;
   }) => void;
   onUpdateProfile: (data: Partial<UserProfile>) => Promise<void>;
   onSubmitDeposit: (amount: number, method: 'bkash' | 'nagad', trxId: string) => void;
@@ -48,14 +49,16 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   const [isPaidMode, setIsPaidMode] = useState(false);
   const [entryFee, setEntryFee] = useState<number>(0);
   const [selectedQuizId, setSelectedQuizId] = useState<string | null>(null);
+  const [selectedCollection, setSelectedCollection] = useState<string | undefined>(undefined);
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
 
-  const handleSubjectClick = (subject: string, isLive: boolean = false, isPaid: boolean = false, fee: number = 0, quizId?: string) => {
+  const handleSubjectClick = (subject: string, isLive: boolean = false, isPaid: boolean = false, fee: number = 0, quizId?: string, collectionName?: string) => {
     setSelectedSubject(subject);
     setIsLiveMode(isLive);
     setIsPaidMode(isPaid);
     setEntryFee(fee);
     setSelectedQuizId(quizId || null);
+    setSelectedCollection(collectionName);
     setShowConfig(true);
   };
 
@@ -106,7 +109,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({
               isLive: isLiveMode, 
               isPaid: isPaidMode,
               entryFee: entryFee,
-              quizId: selectedQuizId || undefined
+              quizId: selectedQuizId || undefined,
+              collection: selectedCollection
             });
           }}
         />
