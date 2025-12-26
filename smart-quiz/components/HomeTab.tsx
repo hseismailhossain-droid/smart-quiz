@@ -1,5 +1,5 @@
 
-import { Bell, BookOpen, Trophy, Flame, ChevronRight, Star, ArrowLeft, Medal, Share2, LogOut, Edit3, Smartphone, X, Zap, ShieldCheck, HelpCircle, BarChart3, Info, CheckCircle2, Image as ImageIcon, Wallet, PlusCircle, ArrowUpRight } from 'lucide-react';
+import { Bell, BookOpen, Trophy, Flame, Star, LogOut, Edit3, Share2, Wallet, PlusCircle, ArrowUpRight, X, Image as ImageIcon, CheckCircle2, BarChart3, Users } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { Notification, UserProfile, Lesson, Poll, AdminNotice } from '../types';
 import { db, auth } from '../services/firebase';
@@ -19,41 +19,71 @@ interface HomeTabProps {
 }
 
 const HomeTab: React.FC<HomeTabProps> = ({ 
-  user, notifications, lessons, onShowNotifications, onLogout, onSubjectSelect, onLessonSelect, onEditProfile, onSubmitDeposit, onSubmitWithdraw 
+  user, notifications, onShowNotifications, onLogout, onSubjectSelect, onEditProfile, onSubmitDeposit, onSubmitWithdraw 
 }) => {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [winners, setWinners] = useState<any[]>([]);
   const [specialQuizzes, setSpecialQuizzes] = useState<any[]>([]);
+  const [adminNotices, setAdminNotices] = useState<AdminNotice[]>([]);
+  const [activePolls, setActivePolls] = useState<Poll[]>([]);
   
   // Wallet States
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [walletView, setWalletView] = useState<'recharge' | 'withdraw'>('recharge');
-  const [paymentNumbers, setPaymentNumbers] = useState<any>({});
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState<'bkash' | 'nagad'>('bkash');
   const [trxId, setTrxId] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
-  
-  const [adminNotices, setAdminNotices] = useState<AdminNotice[]>([]);
-  
+
   useEffect(() => {
     let unsubs: (() => void)[] = [];
     if (auth.currentUser) {
-      unsubs.push(onSnapshot(doc(db, 'settings', 'payment_numbers'), 
-        (snap) => snap.exists() && setPaymentNumbers(snap.data())));
-
-      unsubs.push(onSnapshot(query(collection(db, 'winners'), orderBy('timestamp', 'desc'), limit(5)), 
-        (snap) => setWinners(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })))));
-
       unsubs.push(onSnapshot(query(collection(db, 'admin_special_quizzes'), orderBy('timestamp', 'desc'), limit(10)), 
-        // Fixed: changed d.id to doc.id as the parameter name is doc
         (snap) => setSpecialQuizzes(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })))));
 
       unsubs.push(onSnapshot(query(collection(db, 'admin_notices'), orderBy('timestamp', 'desc'), limit(5)), 
         (snap) => setAdminNotices(snap.docs.map(d => ({ id: d.id, ...d.data() } as AdminNotice)))));
+
+      unsubs.push(onSnapshot(query(collection(db, 'admin_polls'), orderBy('timestamp', 'desc'), limit(1)), 
+        (snap) => setActivePolls(snap.docs.map(d => ({ id: d.id, ...d.data() } as Poll)))));
     }
     return () => unsubs.forEach(u => u());
-  }, [user.email]);
+  }, []);
+
+  const handleShareApp = async () => {
+    const shareData = {
+      title: 'Smart Quiz Pro',
+      text: `🚀 বিসিএস ও ভর্তি প্রস্তুতির জন্য সেরা অ্যাপ 'Smart Quiz Pro' আজই ব্যবহার শুরু করুন! ডাউনলোড লিঙ্ক: ${window.location.origin}`,
+      url: window.location.origin,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(shareData.text);
+        alert('অ্যাপ লিঙ্ক কপি করা হয়েছে!');
+      }
+    } catch (err) {
+      console.log('Error sharing:', err);
+    }
+  };
+
+  const handleVote = async (pollId: string, optionIdx: number) => {
+    if (!auth.currentUser) return;
+    const uid = auth.currentUser.uid;
+    const pollRef = doc(db, 'admin_polls', pollId);
+    const poll = activePolls.find(p => p.id === pollId);
+    
+    if (poll?.votedBy?.includes(uid)) return alert("আপনি ইতিমধ্যে ভোট দিয়েছেন!");
+
+    const updatedOptions = [...poll!.options];
+    updatedOptions[optionIdx].votes += 1;
+
+    await updateDoc(pollRef, {
+      options: updatedOptions,
+      votedBy: arrayUnion(uid)
+    });
+  };
 
   const handleWalletAction = () => {
     if (!amount || Number(amount) <= 0) return alert("সঠিক পরিমাণ লিখুন");
@@ -69,37 +99,8 @@ const HomeTab: React.FC<HomeTabProps> = ({
     setAmount(''); setTrxId(''); setAccountNumber('');
   };
 
-  const handleShare = async () => {
-    const shareText = `🚀 Smart Quiz Pro - কুইজ খেলুন এবং পুরস্কার জিতুন! ডাউনলোড করুন: ${window.location.origin}`;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: 'Smart Quiz Pro', text: shareText, url: window.location.origin });
-      } catch (err) {}
-    } else {
-      navigator.clipboard.writeText(shareText);
-      alert('লিঙ্ক কপি করা হয়েছে!');
-    }
-  };
-
-  const unreadCount = notifications.length;
-
   return (
     <div className="p-4 space-y-6 bg-white pb-24 font-['Hind_Siliguri']">
-      {/* Logout Confirmation Modal */}
-      {showLogoutConfirm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[1000] flex items-center justify-center p-6">
-           <div className="bg-white w-full max-w-xs rounded-[40px] p-8 text-center animate-in zoom-in duration-200">
-              <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-6"><LogOut size={32}/></div>
-              <h4 className="text-xl font-black text-slate-900 mb-2">লগআউট করবেন?</h4>
-              <p className="text-xs text-slate-400 font-bold mb-8">আপনি কি নিশ্চিতভাবে অ্যাকাউন্ট থেকে লগআউট করতে চান?</p>
-              <div className="flex flex-col gap-3">
-                 <button onClick={onLogout} className="w-full bg-rose-600 text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-rose-600/20">হ্যাঁ, লগআউট করুন</button>
-                 <button onClick={() => setShowLogoutConfirm(false)} className="w-full bg-slate-100 text-slate-400 py-4 rounded-2xl font-black text-sm">বাতিল</button>
-              </div>
-           </div>
-        </div>
-      )}
-
       {/* Header */}
       <div className="flex justify-between items-center px-1 py-2">
         <div className="flex items-center gap-4">
@@ -117,11 +118,13 @@ const HomeTab: React.FC<HomeTabProps> = ({
           </div>
         </div>
         <div className="flex gap-2">
+          <button onClick={handleShareApp} className="p-3 bg-slate-50 text-emerald-600 rounded-2xl active:scale-90 transition-all">
+            <Share2 size={20} />
+          </button>
           <button onClick={onShowNotifications} className="p-3 bg-slate-50 text-slate-600 rounded-2xl active:scale-90 transition-all relative">
             <Bell size={20} />
-            {unreadCount > 0 && <span className="absolute top-2 right-2 w-4 h-4 bg-rose-500 text-white text-[8px] font-black rounded-full flex items-center justify-center border-2 border-white">{unreadCount}</span>}
+            {notifications.length > 0 && <span className="absolute top-2 right-2 w-4 h-4 bg-rose-500 text-white text-[8px] font-black rounded-full flex items-center justify-center border-2 border-white">{notifications.length}</span>}
           </button>
-          <button onClick={handleShare} className="p-3 bg-slate-50 text-slate-600 rounded-2xl active:scale-90 transition-all"><Share2 size={20} /></button>
           <button onClick={() => setShowLogoutConfirm(true)} className="p-3 bg-rose-50 text-rose-600 rounded-2xl active:scale-90 transition-all"><LogOut size={20} /></button>
         </div>
       </div>
@@ -131,7 +134,7 @@ const HomeTab: React.FC<HomeTabProps> = ({
          <div className="relative z-10">
             <div className="flex justify-between items-center mb-6">
                <div>
-                  <p className="text-[10px] font-black text-emerald-300 uppercase tracking-widest mb-1">বর্তমান ব্যালেন্স</p>
+                  <p className="text-[10px] font-black text-emerald-300 uppercase tracking-widest mb-1">ব্যালেন্স</p>
                   <h2 className="text-4xl font-black">৳{user.balance || 0}</h2>
                </div>
                <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-md">
@@ -139,10 +142,120 @@ const HomeTab: React.FC<HomeTabProps> = ({
                </div>
             </div>
             <div className="flex gap-3">
-               <button onClick={() => { setWalletView('recharge'); setShowWalletModal(true); }} className="flex-1 bg-white text-emerald-900 py-4 rounded-2xl font-black text-xs uppercase flex items-center justify-center gap-2 active:scale-95 transition-all shadow-xl"><PlusCircle size={16}/> রিচার্জ</button>
-               <button onClick={() => { setWalletView('withdraw'); setShowWalletModal(true); }} className="flex-1 bg-emerald-800 text-white py-4 rounded-2xl font-black text-xs uppercase flex items-center justify-center gap-2 border border-white/10 active:scale-95 transition-all"><ArrowUpRight size={16}/> উত্তোলন</button>
+               <button onClick={() => { setWalletView('recharge'); setShowWalletModal(true); }} className="flex-1 bg-white text-emerald-900 py-4 rounded-2xl font-black text-xs uppercase shadow-xl"><PlusCircle size={16} className="inline mr-1"/> রিচার্জ</button>
+               <button onClick={() => { setWalletView('withdraw'); setShowWalletModal(true); }} className="flex-1 bg-emerald-800 text-white py-4 rounded-2xl font-black text-xs uppercase border border-white/10"><ArrowUpRight size={16} className="inline mr-1"/> উইথড্র</button>
             </div>
          </div>
+      </div>
+
+      {/* Admin Notices Slider */}
+      {adminNotices.length > 0 && (
+        <div className="px-1">
+          <h4 className="font-black text-gray-900 text-xl flex items-center gap-2 mb-4">
+            <Bell size={24} className="text-emerald-700" /> নোটিশ বোর্ড
+          </h4>
+          <div className="flex gap-4 overflow-x-auto pb-4 -mx-1 px-1 snap-x no-scrollbar">
+            {adminNotices.map(notice => (
+              <div key={notice.id} className="min-w-[280px] max-w-[280px] bg-white rounded-[40px] border border-slate-100 shadow-sm p-4 snap-center flex flex-col gap-4">
+                {notice.image && (
+                  <div className="w-full h-32 rounded-[28px] overflow-hidden">
+                    <img src={notice.image} className="w-full h-full object-cover" alt="Notice" />
+                  </div>
+                )}
+                <div className="px-2">
+                  <h5 className="font-black text-slate-800 text-sm line-clamp-1">{notice.title}</h5>
+                  <p className="text-[11px] text-slate-500 mt-1 line-clamp-2 leading-relaxed">{notice.content}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-4 gap-3 bg-gray-50 p-6 rounded-[44px] border border-gray-100 mx-1">
+        <StatItem icon={<Trophy className="text-yellow-500" size={18}/>} value={user.totalPoints?.toString() || "0"} label="পয়েন্ট" />
+        <StatItem icon={<BookOpen className="text-blue-500" size={18}/>} value={user.playedQuizzes?.length.toString() || "0"} label="পরীক্ষা" />
+        <StatItem icon={<Star className="text-emerald-500" size={18}/>} value="৫ম" label="র‍্যাংক" />
+        <StatItem icon={<Flame className="text-orange-500" size={18}/>} value={user.streak?.toString() || "0"} label="স্ট্রিক" />
+      </div>
+
+      {/* Invite Friends Card */}
+      <div className="px-1">
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-8 rounded-[48px] text-white shadow-xl relative overflow-hidden group active:scale-[0.98] transition-all cursor-pointer" onClick={handleShareApp}>
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl"></div>
+          <div className="relative z-10 flex items-center gap-6">
+            <div className="w-16 h-16 bg-white/20 rounded-[24px] flex items-center justify-center backdrop-blur-md shrink-0">
+              <Users size={32} className="text-blue-100" />
+            </div>
+            <div>
+              <h4 className="font-black text-xl mb-1">বন্ধুদের আমন্ত্রণ জানান!</h4>
+              <p className="text-blue-100 text-xs font-bold">অ্যাপটি শেয়ার করে সবাইকে কুইজে চ্যালেঞ্জ করুন।</p>
+            </div>
+            <div className="ml-auto">
+              <div className="w-10 h-10 bg-white text-blue-700 rounded-full flex items-center justify-center shadow-lg">
+                <Share2 size={20} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Interactive Poll Section */}
+      {activePolls.length > 0 && (
+        <div className="px-1">
+          {activePolls.map(poll => {
+            const hasVoted = poll.votedBy?.includes(auth.currentUser?.uid || '');
+            const totalVotes = poll.options.reduce((acc, opt) => acc + opt.votes, 0);
+
+            return (
+              <div key={poll.id} className="bg-slate-900 p-8 rounded-[48px] text-white shadow-xl relative overflow-hidden">
+                <div className="relative z-10">
+                  <h4 className="font-black text-xl mb-6 leading-tight flex items-center gap-3">
+                    <BarChart3 className="text-emerald-400" size={24} /> {poll.question}
+                  </h4>
+                  <div className="space-y-3">
+                    {poll.options.map((opt, idx) => {
+                      const percentage = totalVotes > 0 ? Math.round((opt.votes / totalVotes) * 100) : 0;
+                      return (
+                        <button 
+                          key={idx} 
+                          onClick={() => !hasVoted && handleVote(poll.id, idx)}
+                          disabled={hasVoted}
+                          className={`w-full p-4 rounded-2xl font-bold text-xs relative overflow-hidden transition-all border ${hasVoted ? 'bg-white/5 border-white/10' : 'bg-white/10 border-white/10 hover:bg-white/20'}`}
+                        >
+                          <div className="relative z-10 flex justify-between items-center">
+                            <span>{opt.text}</span>
+                            {hasVoted && <span>{percentage}%</span>}
+                          </div>
+                          {hasVoted && (
+                            <div className="absolute inset-y-0 left-0 bg-emerald-500/30 transition-all duration-1000" style={{ width: `${percentage}%` }}></div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {hasVoted && <p className="text-[9px] font-black text-emerald-400 mt-4 text-center uppercase tracking-widest">ভোট দেওয়ার জন্য ধন্যবাদ!</p>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Special Quizzes Section */}
+      <div className="px-1">
+        <h4 className="font-black text-gray-900 text-xl flex items-center gap-2 mb-6">
+          <Star size={24} className="text-amber-500 fill-amber-500" /> স্পেশাল কুইজ
+        </h4>
+        <div className="flex gap-5 overflow-x-auto pb-6 -mx-1 px-1 snap-x no-scrollbar">
+          {specialQuizzes.length > 0 ? specialQuizzes.map((q) => (
+            <button key={q.id} onClick={() => onSubjectSelect(q.title, false, false, 0, q.id)} className={`min-w-[280px] bg-gradient-to-br ${q.color || 'from-emerald-700 to-emerald-900'} p-8 rounded-[44px] text-white text-left snap-center shadow-2xl relative overflow-hidden group`}>
+              <h5 className="text-2xl font-black mb-2 leading-tight pr-4">{q.title}</h5>
+              <p className="text-[10px] font-black uppercase tracking-widest bg-white/20 px-4 py-2 rounded-full border border-white/20 inline-block">{q.questionsCount || 10}টি প্রশ্ন</p>
+            </button>
+          )) : <div className="text-slate-300 font-black text-xs p-10">কোনো স্পেশাল কুইজ নেই</div>}
+        </div>
       </div>
 
       {/* Wallet Modal */}
@@ -170,28 +283,20 @@ const HomeTab: React.FC<HomeTabProps> = ({
         </div>
       )}
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-4 gap-3 bg-gray-50 p-6 rounded-[44px] border border-gray-100 mx-1 shadow-inner">
-        <StatItem icon={<Trophy className="text-yellow-500" size={20}/>} value={user.totalPoints?.toString() || "0"} label="পয়েন্ট" />
-        <StatItem icon={<BookOpen className="text-blue-500" size={20}/>} value={user.playedQuizzes?.length.toString() || "0"} label="পরীক্ষা" />
-        <StatItem icon={<Medal className="text-emerald-500" size={20}/>} value="৫ম" label="র‍্যাংক" />
-        <StatItem icon={<Flame className="text-orange-500" size={20}/>} value={user.streak?.toString() || "0"} label="স্ট্রিক" />
-      </div>
-
-      {/* Special Quizzes Section */}
-      <div className="px-1">
-        <h4 className="font-black text-gray-900 text-xl flex items-center gap-2 mb-6">
-          <Star size={24} className="text-amber-500 fill-amber-500" /> স্পেশাল কুইজ
-        </h4>
-        <div className="flex gap-5 overflow-x-auto pb-6 -mx-1 px-1 snap-x no-scrollbar">
-          {specialQuizzes.length > 0 ? specialQuizzes.map((q) => (
-            <button key={q.id} onClick={() => onSubjectSelect(q.title, false, false, 0, q.id)} className={`min-w-[280px] bg-gradient-to-br ${q.color || 'from-emerald-700 to-emerald-900'} p-8 rounded-[44px] text-white text-left snap-center shadow-2xl relative overflow-hidden group`}>
-              <h5 className="text-2xl font-black mb-2 leading-tight pr-4">{q.title}</h5>
-              <p className="text-[10px] font-black uppercase tracking-widest bg-white/20 px-4 py-2 rounded-full border border-white/20 inline-block">{q.questionsCount || 10}টি প্রশ্ন</p>
-            </button>
-          )) : <div className="text-slate-300 font-black text-xs p-10">কোনো স্পেশাল কুইজ নেই</div>}
+      {/* Logout Confirmation */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[1000] flex items-center justify-center p-6">
+           <div className="bg-white w-full max-w-xs rounded-[40px] p-8 text-center animate-in zoom-in duration-200">
+              <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-6"><LogOut size={32}/></div>
+              <h4 className="text-xl font-black text-slate-900 mb-2">লগআউট করবেন?</h4>
+              <p className="text-xs text-slate-400 font-bold mb-8">আপনি কি নিশ্চিতভাবে অ্যাকাউন্ট থেকে লগআউট করতে চান?</p>
+              <div className="flex flex-col gap-3">
+                 <button onClick={onLogout} className="w-full bg-rose-600 text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-rose-600/20">হ্যাঁ, লগআউট করুন</button>
+                 <button onClick={() => setShowLogoutConfirm(false)} className="w-full bg-slate-100 text-slate-400 py-4 rounded-2xl font-black text-sm">বাতিল</button>
+              </div>
+           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
