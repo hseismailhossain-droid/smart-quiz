@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { X, Camera, Check, Loader2, User, ShieldAlert, ShieldCheck, FileText } from 'lucide-react';
 import { Category, UserProfile } from '../types';
@@ -138,3 +137,4 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onUp
 };
 
 export default EditProfileModal;
+            
