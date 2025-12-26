@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import AuthScreen from './components/AuthScreen';
 import SetupScreen from './components/SetupScreen';
@@ -6,10 +5,10 @@ import MainLayout from './components/MainLayout';
 import QuizScreen from './components/QuizScreen';
 import AdminLayout from './components/admin/AdminLayout';
 import { auth, db } from './services/firebase';
-import { onAuthStateChanged, signOut, updateProfile } from 'firebase/auth';
-import { doc, onSnapshot, setDoc, updateDoc, collection, query, orderBy, addDoc, getDoc, deleteDoc, increment, where, serverTimestamp } from 'firebase/firestore';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { doc, onSnapshot, setDoc, updateDoc, collection, query, orderBy, addDoc, getDoc, deleteDoc, increment, serverTimestamp } from 'firebase/firestore';
 import { Category, Question, QuizResult, UserProfile, Notification, DepositRequest, Lesson, UserReport, WithdrawRequest } from './types';
-import { Settings, Languages } from 'lucide-react';
+import { Settings, ArrowLeft } from 'lucide-react';
 import { ADMIN_EMAIL } from './constants';
 import { Language } from './services/translations';
 
@@ -30,15 +29,8 @@ const App: React.FC = () => {
     isPaid?: boolean;
     quizId?: string;
     entryFee?: number;
-    payoutNumber?: string;
   } | null>(null);
   
-  const [history, setHistory] = useState<{ exams: QuizResult[], mistakes: Question[], marked: Question[] }>({
-    exams: [],
-    mistakes: [],
-    marked: []
-  });
-
   const firestoreUnsubscribers = useRef<(() => void)[]>([]);
 
   const toggleLanguage = () => {
@@ -51,12 +43,8 @@ const App: React.FC = () => {
     const savedLang = localStorage.getItem('app_lang') as Language;
     if (savedLang) setLang(savedLang);
 
-    if (window.location.pathname === '/privacy') {
-      setView('privacy');
-      return;
-    }
-
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+      // Clear previous listeners to prevent memory leaks and redundant calls
       firestoreUnsubscribers.current.forEach(unsub => unsub());
       firestoreUnsubscribers.current = [];
 
@@ -64,28 +52,44 @@ const App: React.FC = () => {
         const currentUserEmail = firebaseUser.email?.toLowerCase() || '';
         const isUserAdmin = currentUserEmail === ADMIN_EMAIL.toLowerCase();
 
+        // 1. User Profile Listener
         const unsubUser = onSnapshot(doc(db, 'users', firebaseUser.uid), 
           (docSnap) => {
             if (docSnap.exists()) {
               setUser(docSnap.data() as UserProfile);
-              setView(isUserAdmin ? 'admin' : 'main');
+              if (view === 'loading' || view === 'auth' || view === 'setup') {
+                setView(isUserAdmin ? 'admin' : 'main');
+              }
             } else {
               if (isUserAdmin) setView('admin');
               else setView('setup');
             }
-          }, (e) => console.warn(e.message));
+          }, (e) => console.warn("User Listener Error:", e.message));
         firestoreUnsubscribers.current.push(unsubUser);
 
+        // 2. Notifications Listener
         const unsubNotif = onSnapshot(query(collection(db, 'notifications'), orderBy('timestamp', 'desc')), 
           (snapshot) => {
             setNotifications(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification)));
           });
         firestoreUnsubscribers.current.push(unsubNotif);
 
+        // 3. Admin-Specific Real-time Listeners
         if (isUserAdmin) {
+          // Deposit Requests Listener
           const unsubDeps = onSnapshot(query(collection(db, 'deposit_requests'), orderBy('timestamp', 'desc')), 
             (snapshot) => setDepositRequests(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DepositRequest))));
           firestoreUnsubscribers.current.push(unsubDeps);
+
+          // User Reports Listener
+          const unsubReports = onSnapshot(query(collection(db, 'user_reports'), orderBy('timestamp', 'desc')), 
+            (snapshot) => setUserReports(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserReport))));
+          firestoreUnsubscribers.current.push(unsubReports);
+
+          // Withdraw Requests Listener
+          const unsubWithdraws = onSnapshot(query(collection(db, 'withdraw_requests'), orderBy('timestamp', 'desc')), 
+            (snapshot) => setWithdrawRequests(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as WithdrawRequest))));
+          firestoreUnsubscribers.current.push(unsubWithdraws);
         }
       } else {
         setUser(null);
@@ -93,12 +97,19 @@ const App: React.FC = () => {
       }
     });
 
-    return () => unsubscribeAuth();
-  }, []);
+    return () => {
+      unsubscribeAuth();
+      firestoreUnsubscribers.current.forEach(unsub => unsub());
+    };
+  }, [view]);
 
   const handleLogout = async () => {
-    await signOut(auth);
-    setView('auth');
+    try {
+      await signOut(auth);
+      setView('auth');
+    } catch (e) {
+      alert("Logout failed");
+    }
   };
 
   const handleFinishQuiz = async (res: QuizResult) => {
@@ -107,11 +118,38 @@ const App: React.FC = () => {
         totalPoints: increment(res.score * 10),
         streak: increment(1)
       });
+      await addDoc(collection(db, 'quiz_attempts'), {
+        uid: auth.currentUser.uid,
+        userName: user.name,
+        quizId: res.quizId || 'mock',
+        subject: res.subject,
+        score: res.score,
+        total: res.total,
+        timestamp: serverTimestamp()
+      });
     }
     setView('main');
   };
 
   if (view === 'loading') return <div className="min-h-screen flex items-center justify-center bg-white"><div className="w-12 h-12 border-4 border-emerald-700 border-t-transparent rounded-full animate-spin"></div></div>;
+
+  if (view === 'privacy') {
+    return (
+      <div className="min-h-screen bg-white p-8 max-w-md mx-auto font-['Hind_Siliguri']">
+        <button onClick={() => setView('main')} className="mb-6 p-2 bg-slate-100 rounded-full"><ArrowLeft /></button>
+        <h1 className="text-2xl font-black mb-4 text-emerald-800">গোপনীয়তা নীতি (Privacy Policy)</h1>
+        <div className="prose text-sm text-slate-600 space-y-4">
+          <p>Smart Quiz Pro আপনার তথ্যের নিরাপত্তাকে গুরুত্ব দেয়।</p>
+          <h3 className="font-bold text-slate-800 mt-4">১. তথ্য সংগ্রহ</h3>
+          <p>আমরা আপনার নাম, ইমেইল এবং কুইজ পারফরম্যান্স ডাটা সংরক্ষণ করি যাতে আপনাকে উন্নত সেবা দেওয়া যায়।</p>
+          <h3 className="font-bold text-slate-800 mt-4">২. তথ্যের ব্যবহার</h3>
+          <p>আপনার অর্জিত পয়েন্ট এবং র‍্যাঙ্কিং লিডারবোর্ডে প্রদর্শনের জন্য আপনার নাম ব্যবহার করা হয়।</p>
+          <h3 className="font-bold text-slate-800 mt-4">৩. নিরাপত্তা</h3>
+          <p>আমরা ফায়ারবেস সিকিউরিটি প্রোটোকল ব্যবহার করি যাতে আপনার তথ্য সুরক্ষিত থাকে।</p>
+        </div>
+      </div>
+    );
+  }
 
   if (view === 'auth') return <AuthScreen onLogin={() => {}} lang={lang} toggleLanguage={toggleLanguage} />;
   
@@ -184,7 +222,7 @@ const App: React.FC = () => {
       ) : (
         <>
           <MainLayout 
-            user={user!} history={history} 
+            user={user!} history={{exams: [], mistakes: [], marked: []}} 
             lang={lang}
             toggleLanguage={toggleLanguage}
             notifications={notifications} setNotifications={setNotifications} 
