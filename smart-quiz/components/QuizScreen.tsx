@@ -15,11 +15,12 @@ interface QuizScreenProps {
   timePerQuestion: number;
   isPaid?: boolean;
   quizId?: string;
+  collectionName?: string;
   lang: Language;
 }
 
 const QuizScreen: React.FC<QuizScreenProps> = ({ 
-  subject, onClose, onFinish, numQuestions, timePerQuestion, isPaid, quizId, lang
+  subject, onClose, onFinish, numQuestions, timePerQuestion, isPaid, quizId, collectionName, lang
 }) => {
   const t = translations[lang];
   const [loading, setLoading] = useState(true);
@@ -38,7 +39,8 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
     setError(null);
     try {
       if (quizId && quizId !== 'mock') {
-        const d = await getDoc(doc(db, 'mock_quizzes', quizId));
+        const targetCollection = collectionName || 'mock_quizzes';
+        const d = await getDoc(doc(db, targetCollection, quizId));
         if (d.exists() && d.data().manualQuestions) {
           setQuestions(d.data().manualQuestions);
           setLoading(false);
@@ -57,7 +59,7 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [subject, numQuestions, quizId, lang]);
+  }, [subject, numQuestions, quizId, collectionName, lang]);
 
   useEffect(() => { loadQuestions(); }, [loadQuestions]);
 
@@ -89,10 +91,8 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
     } else setFinished(true);
   };
 
-  // স্ক্রিনশট অনুযায়ী লোডিং স্ক্রিন
   if (loading) return (
     <div className="min-h-screen bg-white flex flex-col items-center justify-center p-10 text-center font-['Hind_Siliguri'] relative max-w-md mx-auto">
-      {/* ফিরে আসুন বাটন */}
       <button 
         onClick={onClose} 
         className="absolute top-10 left-6 flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-[12px] text-slate-700 hover:text-emerald-700 transition-all active:scale-95 border border-slate-200 shadow-sm"
@@ -113,7 +113,6 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
         {lang === 'bn' ? 'অনুগ্রহ করে অপেক্ষা করুন, AI প্রশ্ন সাজাচ্ছে' : 'Please wait, AI is generating your test'}
       </p>
 
-      {/* কুইজ ইনফো কার্ডস (স্ক্রিনশট অনুযায়ী) */}
       <div className="flex gap-4 w-full">
         <div className="flex-1 bg-emerald-50/50 p-5 rounded-[24px] border border-emerald-100/50 flex flex-col items-center justify-center min-h-[100px] shadow-sm">
            <Hash size={24} className="text-emerald-600 mb-2" />
@@ -129,7 +128,6 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
     </div>
   );
 
-  // এরর হ্যান্ডলিং
   if (error || (questions && questions.length === 0)) return (
     <div className="min-h-screen bg-white flex flex-col items-center justify-center p-10 text-center font-['Hind_Siliguri'] relative max-w-md mx-auto">
       <button 
