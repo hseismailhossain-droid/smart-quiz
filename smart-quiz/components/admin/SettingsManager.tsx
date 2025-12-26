@@ -66,9 +66,9 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({ onSendNotification, o
         ...payments,
         lastUpdated: Date.now()
       });
-      alert("পেমেন্ট সেটিংস সফলভাবে সেভ করা হয়েছে!");
+      alert("à¦ªà§‡à¦®à§‡à¦¨à§à¦Ÿ à¦¸à§‡à¦Ÿà¦¿à¦‚à¦¸ à¦¸à¦«à¦²à¦­à¦¾à¦¬à§‡ à¦¸à§‡à¦­ à¦•à¦°à¦¾ à¦¹à§Ÿà§‡à¦›à§‡!");
     } catch (e) {
-      alert("সেভ করতে সমস্যা হয়েছে।");
+      alert("à¦¸à§‡à¦­ à¦•à¦°à¦¤à§‡ à¦¸à¦®à¦¸à§à¦¯à¦¾ à¦¹à§Ÿà§‡à¦›à§‡à¥¤");
     } finally {
       setIsSaving(false);
     }
@@ -89,7 +89,7 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({ onSendNotification, o
   };
 
   const handleSendNotification = async () => {
-    if (!notifTitle.trim() || !notifMessage.trim()) return alert("টাইটেল ও মেসেজ দিন");
+    if (!notifTitle.trim() || !notifMessage.trim()) return alert("à¦Ÿà¦¾à¦‡à¦Ÿà§‡à¦² à¦“ à¦®à§‡à¦¸à§‡à¦œ à¦¦à¦¿à¦¨");
     setIsSending(true);
     try {
       await onSendNotification(notifTitle, notifMessage);
@@ -98,7 +98,7 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({ onSendNotification, o
       setNotifMessage('');
       setTimeout(() => setShowSuccess(false), 3000);
     } catch (e) {
-      alert("নোটিফিকেশন পাঠানো যায়নি।");
+      alert("à¦¨à§‹à¦Ÿà¦¿à¦«à¦¿à¦•à§‡à¦¶à¦¨ à¦ªà¦¾à¦ à¦¾à¦¨à§‹ à¦¯à¦¾à§Ÿà¦¨à¦¿à¥¤");
     } finally {
       setIsSending(false);
     }
@@ -108,115 +108,121 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({ onSendNotification, o
     <div className="space-y-10 animate-in fade-in duration-500 pb-20 font-['Hind_Siliguri']">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
         <div>
-          <h2 className="text-3xl font-black text-slate-900 leading-tight">সিস্টেম সেটিংস</h2>
-          <p className="text-slate-400 font-bold text-sm">অ্যাপের পেমেন্ট ও নোটিফিকেশন নিয়ন্ত্রণ করুন</p>
+          <h2 className="text-3xl font-black text-slate-900 leading-tight">à¦¸à¦¿à¦¸à§à¦Ÿà§‡à¦® à¦¸à§‡à¦Ÿà¦¿à¦‚à¦¸</h2>
+          <p className="text-slate-400 font-bold text-sm">à¦…à§à¦¯à¦¾à¦ªà§‡à¦° à¦ªà§‡à¦®à§‡à¦¨à§à¦Ÿ à¦“ à¦¨à§‹à¦Ÿà¦¿à¦«à¦¿à¦•à§‡à¦¶à¦¨ à¦¨à¦¿à§Ÿà¦¨à§à¦¤à§à¦°à¦£ à¦•à¦°à§à¦¨</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Payment Settings */}
         <div className="space-y-8">
           <div className="bg-white p-8 md:p-10 rounded-[44px] shadow-sm border border-slate-100 flex flex-col h-full">
             <div className="flex items-center gap-3 mb-10">
               <div className="p-3 bg-emerald-50 rounded-2xl text-emerald-700 shadow-sm"><Smartphone size={24} /></div>
               <div>
-                <h3 className="text-xl font-black text-slate-900">পেমেন্ট মেথডসমূহ</h3>
+                <h3 className="text-xl font-black text-slate-900">à¦ªà§‡à¦®à§‡à¦¨à§à¦Ÿ à¦®à§‡à¦¥à¦¡à¦¸à¦®à§‚à¦¹</h3>
                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Payment Gateway Config</p>
               </div>
             </div>
 
             <div className="space-y-6 flex-grow">
                <PaymentInput 
-                 label="বিকাশ (bKash)" 
+                 label="à¦¬à¦¿à¦•à¦¾à¦¶ (bKash)" 
                  value={payments.bkash.number} 
                  active={payments.bkash.active} 
                  onNumberChange={(v) => updatePaymentNumber('bkash', v)}
                  onToggle={() => togglePaymentActive('bkash')}
                />
                <PaymentInput 
-                 label="নগদ (Nagad)" 
+                 label="à¦¨à¦—à¦¦ (Nagad)" 
                  value={payments.nagad.number} 
                  active={payments.nagad.active} 
                  onNumberChange={(v) => updatePaymentNumber('nagad', v)}
                  onToggle={() => togglePaymentActive('nagad')}
                />
                <PaymentInput 
-                 label="রকেট (Rocket)" 
+                 label="à¦°à¦•à§‡à¦Ÿ (Rocket)" 
                  value={payments.rocket.number} 
                  active={payments.rocket.active} 
                  onNumberChange={(v) => updatePaymentNumber('rocket', v)}
                  onToggle={() => togglePaymentActive('rocket')}
                />
                <PaymentInput 
-                 label="উপায় (Upay)" 
+                 label="à¦‰à¦ªà¦¾à¦¯à¦¼ (Upay)" 
                  value={payments.upay.number} 
                  active={payments.upay.active} 
                  onNumberChange={(v) => updatePaymentNumber('upay', v)}
                  onToggle={() => togglePaymentActive('upay')}
                />
-
-               <div className="bg-blue-50 p-6 rounded-[28px] border border-blue-100/50 flex items-start gap-3 mt-4">
-                  <Info size={16} className="text-blue-700 shrink-0 mt-0.5" />
-                  <p className="text-[11px] text-blue-800 font-bold leading-relaxed">
-                    যে মেথডগুলো <b>Active (চোখ খোলা)</b> রাখবেন, সেগুলোই কেবল ইউজার অ্যাপে পেমেন্টের জন্য দেখা যাবে।
-                  </p>
-               </div>
             </div>
 
             <div className="mt-8">
               <button 
                 onClick={handleSaveSettings} 
                 disabled={isSaving} 
-                className="w-full bg-emerald-700 text-white py-6 rounded-[28px] font-black text-lg shadow-xl shadow-emerald-700/20 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-3"
+                className="w-full bg-emerald-700 text-white py-6 rounded-[28px] font-black text-lg shadow-xl active:scale-95 transition-all"
               >
-                {isSaving ? <Loader2 className="animate-spin" /> : <><Save size={22} /> পেমেন্ট সেটিংস সেভ করুন</>}
+                {isSaving ? <Loader2 className="animate-spin mx-auto" /> : 'à¦¸à§‡à¦­ à¦•à¦°à§à¦¨'}
               </button>
             </div>
           </div>
         </div>
 
+        {/* Notifications Management */}
         <div className="space-y-8">
-           <div className="bg-white p-8 md:p-10 rounded-[44px] shadow-sm border border-slate-100 flex flex-col">
-              <div className="flex items-center gap-3 mb-10">
+           <div className="bg-white p-8 md:p-10 rounded-[44px] shadow-sm border border-slate-100">
+              <div className="flex items-center gap-3 mb-8">
                 <div className="p-3 bg-blue-50 rounded-2xl text-blue-700 shadow-sm"><Bell size={24} /></div>
-                <div>
-                  <h3 className="text-xl font-black text-slate-900">পুশ নোটিফিকেশন পাঠান</h3>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Global Broadcast</p>
-                </div>
+                <h3 className="text-xl font-black text-slate-900">à¦¨à§‹à¦Ÿà¦¿à¦«à¦¿à¦•à§‡à¦¶à¦¨ à¦ªà¦¾à¦ à¦¾à¦¨</h3>
               </div>
-              <div className="space-y-6">
-                 <div className="space-y-2">
-                   <label className="text-[10px] font-black text-slate-400 uppercase px-2">টাইটেল</label>
-                   <input 
-                    type="text" 
-                    value={notifTitle} 
-                    onChange={(e) => setNotifTitle(e.target.value)} 
-                    placeholder="যেমন: নতুন কুইজ এলার্ট!" 
-                    className="w-full bg-slate-50 border border-slate-100 p-5 rounded-[24px] font-bold outline-none focus:bg-white focus:border-blue-200 transition-all" 
-                   />
-                 </div>
-                 <div className="space-y-2">
-                   <label className="text-[10px] font-black text-slate-400 uppercase px-2">মেসেজ বডি</label>
-                   <textarea 
-                    value={notifMessage} 
-                    onChange={(e) => setNotifMessage(e.target.value)} 
-                    placeholder="আপনার ইউজারদের জন্য জরুরি মেসেজ লিখুন..." 
-                    className="w-full bg-slate-50 border border-slate-100 p-6 rounded-[32px] font-bold h-32 outline-none resize-none leading-relaxed focus:bg-white focus:border-blue-200 transition-all" 
-                   />
-                 </div>
-                 
-                 <div className="pt-2">
-                  {showSuccess && (
-                    <div className="mb-4 p-4 bg-emerald-50 text-emerald-700 rounded-2xl border border-emerald-100 font-black text-xs flex items-center justify-center gap-2 animate-in slide-in-from-top-2">
-                      <CheckCircle2 size={16} /> নোটিফিকেশন পাঠানো হয়েছে
+              
+              <div className="space-y-6 mb-10">
+                 <input 
+                  type="text" 
+                  value={notifTitle} 
+                  onChange={(e) => setNotifTitle(e.target.value)} 
+                  placeholder="à¦¨à§‹à¦Ÿà¦¿à¦«à¦¿à¦•à§‡à¦¶à¦¨ à¦Ÿà¦¾à¦‡à¦Ÿà§‡à¦²" 
+                  className="w-full bg-slate-50 border border-slate-100 p-5 rounded-[24px] font-bold outline-none" 
+                 />
+                 <textarea 
+                  value={notifMessage} 
+                  onChange={(e) => setNotifMessage(e.target.value)} 
+                  placeholder="à¦†à¦ªà¦¨à¦¾à¦° à¦®à§‡à¦¸à§‡à¦œ..." 
+                  className="w-full bg-slate-50 border border-slate-100 p-6 rounded-[32px] font-bold h-32 outline-none" 
+                 />
+                 <button 
+                  onClick={handleSendNotification} 
+                  disabled={isSending || !notifTitle.trim()} 
+                  className="w-full py-5 bg-blue-600 text-white rounded-[28px] font-black text-lg flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-all"
+                 >
+                    {isSending ? <Loader2 className="animate-spin" /> : <><Send size={22} /> à¦ªà¦¾à¦ à¦¾à¦¨</>}
+                 </button>
+              </div>
+
+              {/* Sent Notifications List */}
+              <div className="pt-8 border-t border-slate-100">
+                <h4 className="text-sm font-black text-slate-800 mb-6 flex items-center gap-2">
+                   <Clock size={16} /> à¦ªà¦¾à¦ à¦¾à¦¨à§‹ à¦¨à§‹à¦Ÿà¦¿à¦«à¦¿à¦•à§‡à¦¶à¦¨ à¦²à¦¿à¦¸à§à¦Ÿ
+                </h4>
+                <div className="space-y-4 max-h-[400px] overflow-y-auto no-scrollbar pr-2">
+                  {notifications.map(n => (
+                    <div key={n.id} className="p-4 bg-slate-50 rounded-3xl border border-slate-100 group relative">
+                       <button 
+                        onClick={() => onDeleteNotification(n.id)}
+                        className="absolute top-4 right-4 p-2 bg-white text-rose-500 rounded-xl shadow-sm opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-500 hover:text-white"
+                       >
+                         <Trash2 size={16} />
+                       </button>
+                       <h5 className="font-black text-slate-900 text-xs pr-8">{n.title}</h5>
+                       <p className="text-[10px] text-slate-500 mt-1 line-clamp-2">{n.message}</p>
+                       <p className="text-[8px] font-black text-slate-300 mt-2 uppercase">{n.time || 'à¦ªà¦¾à¦ à¦¾à¦¨à§‹ à¦¹à§Ÿà§‡à¦›à§‡'}</p>
+                    </div>
+                  ))}
+                  {notifications.length === 0 && (
+                    <div className="text-center py-10 text-slate-300 font-bold text-xs uppercase tracking-widest">
+                       à¦•à§‹à¦¨à§‹ à¦¨à§‹à¦Ÿà¦¿à¦«à¦¿à¦•à§‡à¦¶à¦¨ à¦ªà¦¾à¦“à§Ÿà¦¾ à¦¯à¦¾à§Ÿà¦¨à¦¿
                     </div>
                   )}
-                  <button 
-                    onClick={handleSendNotification} 
-                    disabled={isSending || !notifTitle.trim() || !notifMessage.trim()} 
-                    className="w-full py-5 bg-blue-600 text-white rounded-[28px] font-black text-lg shadow-xl shadow-blue-600/20 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-3"
-                  >
-                    {isSending ? <Loader2 className="animate-spin" /> : <><Send size={22} /> সব ইউজারকে পাঠান</>}
-                  </button>
                 </div>
               </div>
            </div>
@@ -241,20 +247,18 @@ const PaymentInput: React.FC<PaymentInputProps> = ({ label, value, active, onNum
       <button 
         type="button"
         onClick={onToggle}
-        className={`flex items-center gap-1 text-[10px] font-black uppercase transition-colors px-3 py-1 rounded-lg ${active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'}`}
+        className={`p-1.5 rounded-lg transition-colors ${active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-300'}`}
       >
-        {active ? <><Eye size={12}/> Active</> : <><EyeOff size={12}/> Hidden</>}
+        {active ? <Eye size={14}/> : <EyeOff size={14}/>}
       </button>
     </div>
-    <div className="relative group">
-       <input 
-        type="text" 
-        value={value} 
-        onChange={(e) => onNumberChange(e.target.value)} 
-        placeholder="01XXXXXXXXX" 
-        className={`w-full p-5 rounded-[22px] outline-none font-black text-base border-2 transition-all ${active ? 'bg-slate-50 border-slate-100 focus:bg-white focus:border-emerald-200' : 'bg-slate-50/50 border-slate-50 text-slate-300'}`} 
-       />
-    </div>
+    <input 
+      type="text" 
+      value={value} 
+      onChange={(e) => onNumberChange(e.target.value)} 
+      placeholder="01XXXXXXXXX" 
+      className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black outline-none" 
+    />
   </div>
 );
 
