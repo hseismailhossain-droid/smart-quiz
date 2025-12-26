@@ -10,7 +10,7 @@ import ProgressTab from './ProgressTab';
 import QuizConfigModal from './QuizConfigModal';
 import EditProfileModal from './EditProfileModal';
 import { UserProfile, QuizResult, Question, Notification, Lesson } from '../types';
-import { X, ArrowLeft } from 'lucide-react';
+import { X, ArrowLeft, BellOff } from 'lucide-react';
 import { Language } from '../services/translations';
 
 interface MainLayoutProps {
@@ -41,7 +41,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   const [activeTab, setActiveTab] = useState<'home' | 'community' | 'exam' | 'progress' | 'leaderboard' | 'history'>('home');
   const [showConfig, setShowConfig] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [profileModal, setProfileModal] = useState<{show: boolean, tab: 'profile' | 'report' | 'privacy'}>({show: false, tab: 'profile'});
+  
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
   const [isLiveMode, setIsLiveMode] = useState(false);
   const [isPaidMode, setIsPaidMode] = useState(false);
@@ -70,7 +71,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
             onLogout={onLogout} 
             onSubjectSelect={handleSubjectClick} 
             onLessonSelect={(l) => setActiveLesson(l)} 
-            onEditProfile={() => setShowEditProfile(true)}
+            onEditProfile={(tab = 'profile') => setProfileModal({show: true, tab})}
             onSubmitDeposit={onSubmitDeposit}
             onSubmitWithdraw={onSubmitWithdraw}
           />
@@ -111,15 +112,20 @@ const MainLayout: React.FC<MainLayoutProps> = ({
         />
       )}
 
-      {showEditProfile && (
-        <EditProfileModal user={user} onClose={() => setShowEditProfile(false)} onUpdate={onUpdateProfile} />
+      {profileModal.show && (
+        <EditProfileModal 
+          user={user} 
+          initialTab={profileModal.tab} 
+          onClose={() => setProfileModal({...profileModal, show: false})} 
+          onUpdate={onUpdateProfile} 
+        />
       )}
 
       {activeLesson && (
         <div className="fixed inset-0 bg-white z-[300] flex flex-col">
            <div className="p-5 flex items-center justify-between border-b bg-white">
               <button onClick={() => setActiveLesson(null)} className="p-2.5 bg-gray-50 rounded-2xl"><ArrowLeft size={24} /></button>
-              <span className="font-black text-gray-800">লিসন মোড</span>
+              <span className="font-black text-gray-800">à¦²à¦¿à¦¸à¦¨ à¦®à§‹à¦¡</span>
               <div className="w-10"></div>
            </div>
            <div className="flex-grow overflow-y-auto p-6 no-scrollbar">
@@ -130,20 +136,27 @@ const MainLayout: React.FC<MainLayoutProps> = ({
       )}
 
       {showNotifications && (
-        <div className="fixed inset-0 bg-black/60 z-[200] flex items-end justify-center">
-          <div className="bg-white w-full max-w-md rounded-t-[40px] p-8 animate-in slide-in-from-bottom-24 max-h-[80vh] flex flex-col shadow-2xl">
+        <div className="fixed inset-0 bg-black/60 z-[2000] backdrop-blur-md flex items-end justify-center">
+          <div className="bg-white w-full max-w-md rounded-t-[40px] p-8 animate-in slide-in-from-bottom-24 max-h-[85vh] flex flex-col shadow-2xl">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-black text-gray-900">নোটিফিকেশন</h3>
-              <button onClick={() => setShowNotifications(false)} className="p-2 bg-gray-100 rounded-full text-slate-400"><X size={20} /></button>
+              <h3 className="text-xl font-black text-gray-900">à¦¨à§‹à¦Ÿà¦¿à¦«à¦¿à¦•à§‡à¦¶à¦¨</h3>
+              <button onClick={() => setShowNotifications(false)} className="p-3 bg-gray-100 rounded-full text-slate-400"><X size={20} /></button>
             </div>
-            <div className="flex-grow overflow-y-auto space-y-4">
+            <div className="flex-grow overflow-y-auto space-y-4 no-scrollbar pb-10">
               {notifications.map(n => (
-                <div key={n.id} className="p-5 bg-gray-50 rounded-3xl border border-gray-100">
+                <div key={n.id} className="p-5 bg-slate-50 rounded-3xl border border-slate-100 relative overflow-hidden group">
+                  <div className="absolute top-0 left-0 w-1 h-full bg-emerald-600"></div>
                   <h4 className="font-black text-emerald-800 text-sm">{n.title}</h4>
-                  <p className="text-xs text-gray-600 mt-1">{n.message}</p>
+                  <p className="text-xs text-gray-600 mt-1 leading-relaxed">{n.message}</p>
+                  <p className="text-[8px] font-black text-gray-400 mt-2 uppercase tracking-widest">{n.time || 'JUST NOW'}</p>
                 </div>
               ))}
-              {notifications.length === 0 && <div className="py-10 text-center text-slate-300 font-black uppercase text-[10px]">কোনো নোটিফিকেশন নেই</div>}
+              {notifications.length === 0 && (
+                <div className="py-20 text-center flex flex-col items-center">
+                   <div className="w-16 h-16 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center mb-4"><BellOff size={32}/></div>
+                   <p className="text-slate-300 font-black uppercase text-[10px] tracking-widest">à¦•à§‹à¦¨à§‹ à¦¨à§‹à¦Ÿà¦¿à¦«à¦¿à¦•à§‡à¦¶à¦¨ à¦¨à§‡à¦‡</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
