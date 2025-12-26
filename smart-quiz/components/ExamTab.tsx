@@ -9,7 +9,7 @@ import PuzzlesTab from './PuzzlesTab';
 
 interface ExamTabProps {
   user: UserProfile;
-  onSubjectSelect: (subject: string, isLive: boolean, isPaid?: boolean, entryFee?: number, quizId?: string) => void;
+  onSubjectSelect: (subject: string, isLive: boolean, isPaid?: boolean, entryFee?: number, quizId?: string, collectionName?: string) => void;
   onSubmitDeposit: (amount: number, method: 'bkash' | 'nagad', trxId: string) => void;
   onSubmitWithdraw: (amount: number, method: 'bkash' | 'nagad', accountNumber: string) => void;
 }
@@ -93,7 +93,7 @@ const ExamTab: React.FC<ExamTabProps> = ({ user, onSubjectSelect, onSubmitDeposi
     return 'active';
   };
 
-  const handleQuizSelection = (quiz: any, isLive: boolean, isPaid: boolean) => {
+  const handleQuizSelection = (quiz: any, isLive: boolean, isPaid: boolean, collectionName?: string) => {
     const status = getQuizTimeStatus(quiz);
     if (status === 'upcoming') {
       return alert(`এই কুইজটি শুরু হবে: ${new Date(quiz.startDate).toLocaleString('bn-BD')}`);
@@ -101,7 +101,7 @@ const ExamTab: React.FC<ExamTabProps> = ({ user, onSubjectSelect, onSubmitDeposi
     if (status === 'expired') {
       return alert("এই কুইজটির সময় শেষ হয়ে গেছে!");
     }
-    onSubjectSelect(quiz.title, isLive, isPaid, quiz.entryFee || 0, quiz.id);
+    onSubjectSelect(quiz.title, isLive, isPaid, quiz.entryFee || 0, quiz.id, collectionName);
   };
 
   const getLucideIcon = (name: string) => {
@@ -285,7 +285,7 @@ const ExamTab: React.FC<ExamTabProps> = ({ user, onSubjectSelect, onSubmitDeposi
                           return (
                             <button 
                               key={quiz.id} 
-                              onClick={() => handleQuizSelection(quiz, false, false)}
+                              onClick={() => handleQuizSelection(quiz, false, false, 'mock_quizzes')}
                               className="w-full p-6 bg-white rounded-[32px] border border-slate-100 text-left font-black shadow-sm flex justify-between items-center group active:scale-95 transition-all relative overflow-hidden"
                             >
                               <div className="flex-grow">
@@ -337,11 +337,12 @@ const ExamTab: React.FC<ExamTabProps> = ({ user, onSubjectSelect, onSubmitDeposi
              {(examMode === 'paid' ? paidQuizzes : examMode === 'live' ? liveQuizzes : specialQuizzes).length > 0 ? (
                (examMode === 'paid' ? paidQuizzes : examMode === 'live' ? liveQuizzes : specialQuizzes).map(quiz => {
                  const timeStatus = getQuizTimeStatus(quiz);
+                 const col = examMode === 'paid' ? 'paid_quizzes' : examMode === 'live' ? 'live_quizzes' : 'admin_special_quizzes';
                  return (
                   <div key={quiz.id} className="bg-white p-8 rounded-[48px] border border-slate-100 shadow-xl overflow-hidden group relative">
                       <div className="flex items-center gap-3 mb-4">
                         <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${examMode === 'paid' ? 'bg-amber-100 text-amber-600' : 'bg-rose-100 text-rose-600'}`}>
-                          {examMode === 'paid' ? 'Entry: ৳'+quiz.entryFee : 'LIVE'}
+                          {examMode === 'paid' ? 'Entry: ৳'+quiz.entryFee : (examMode === 'live' ? 'LIVE' : 'SPECIAL')}
                         </span>
                         {timeStatus === 'upcoming' && <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-[9px] font-black flex items-center gap-1"><Calendar size={10}/> Upcoming</span>}
                       </div>
@@ -352,7 +353,7 @@ const ExamTab: React.FC<ExamTabProps> = ({ user, onSubjectSelect, onSubmitDeposi
                             <p className="font-black text-emerald-700 text-xl">৳{quiz.prizePool || 0}</p>
                         </div>
                         <button 
-                          onClick={() => handleQuizSelection(quiz, examMode === 'live', examMode === 'paid')} 
+                          onClick={() => handleQuizSelection(quiz, examMode === 'live', examMode === 'paid', col)} 
                           className={`px-8 py-4 rounded-2xl font-black text-sm active:scale-95 transition-all shadow-lg ${timeStatus === 'active' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-400'}`}
                         >
                           {timeStatus === 'upcoming' ? 'অপেক্ষা করুন' : timeStatus === 'expired' ? 'সময় শেষ' : (examMode === 'paid' ? 'ফি দিয়ে অংশ নিন' : 'অংশ নিন')}
