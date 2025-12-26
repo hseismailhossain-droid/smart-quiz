@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { BarChart3, Image as ImageIcon, Plus, Trash2, Save, Loader2, X, AlertTriangle, Eye, Send, CheckCircle2, Camera } from 'lucide-react';
+import { BarChart3, Image as ImageIcon, Plus, Trash2, Save, Loader2, X, Send, Camera } from 'lucide-react';
 import { db } from '../../services/firebase';
-import { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
 import ConfirmModal from './ConfirmModal';
 
 const HomeManagement: React.FC = () => {
@@ -45,7 +45,7 @@ const HomeManagement: React.FC = () => {
   };
 
   const handleSavePoll = async () => {
-    if (!pollQuestion.trim() || pollOptions.some(o => !o.trim())) return alert("সব তথ্য দিন");
+    if (!pollQuestion.trim() || pollOptions.some(o => !o.trim())) return alert("সবগুলো অপশন পূরণ করুন");
     setIsSaving(true);
     try {
       await addDoc(collection(db, 'admin_polls'), {
@@ -55,9 +55,10 @@ const HomeManagement: React.FC = () => {
         votedBy: [],
         timestamp: serverTimestamp()
       });
-      setPollQuestion(''); setPollOptions(['', '']);
+      setPollQuestion(''); 
+      setPollOptions(['', '']);
       alert("পোল সফলভাবে তৈরি হয়েছে!");
-    } catch (e) { alert("ব্যর্থ হয়েছে।"); }
+    } catch (e) { alert("পোল পোস্ট করা সম্ভব হয়নি।"); }
     finally { setIsSaving(false); }
   };
 
@@ -72,9 +73,11 @@ const HomeManagement: React.FC = () => {
         active: true,
         timestamp: serverTimestamp()
       });
-      setNoticeTitle(''); setNoticeContent(''); setNoticeImage(null);
-      alert("পোস্টটি সফলভাবে পাবলিশ হয়েছে!");
-    } catch (e) { alert("ব্যর্থ হয়েছে।"); }
+      setNoticeTitle(''); 
+      setNoticeContent(''); 
+      setNoticeImage(null);
+      alert("নোটিশ সফলভাবে পাবলিশ হয়েছে!");
+    } catch (e) { alert("নোটিশ পোস্ট করা সম্ভব হয়নি।"); }
     finally { setIsSaving(false); }
   };
 
@@ -93,17 +96,17 @@ const HomeManagement: React.FC = () => {
         title="ডিলিট নিশ্চিত করুন"
         message={`আপনি কি নিশ্চিতভাবে "${deleteConfirm.title}" মুছে ফেলতে চান?`}
         onConfirm={executeDelete}
-        onCancel={() => setDeleteConfirm({ show: false, type: 'poll', id: '', title: '' })}
+        onCancel={() => setDeleteConfirm({ show: false, id: '', title: '' })}
       />
 
       <div className="flex flex-col md:flex-row justify-between items-center gap-6">
         <div>
           <h2 className="text-3xl font-black text-slate-900 leading-tight">হোম ম্যানেজমেন্ট</h2>
-          <p className="text-slate-400 font-bold text-sm">হোম স্ক্রিনের পোল ও নোটিশ নিয়ন্ত্রণ করুন</p>
+          <p className="text-slate-400 font-bold text-sm">পোল এবং নোটিশ বোর্ড আপডেট করুন</p>
         </div>
         <div className="flex bg-white p-2 rounded-[24px] border border-slate-100 shadow-sm overflow-x-auto no-scrollbar">
           <button onClick={() => setActiveTab('poll')} className={`px-8 py-3 rounded-[18px] font-black text-xs uppercase tracking-widest transition-all ${activeTab === 'poll' ? 'bg-emerald-700 text-white shadow-lg' : 'text-slate-400'}`}>পোল তৈরি</button>
-          <button onClick={() => setActiveTab('notice')} className={`px-8 py-3 rounded-[18px] font-black text-xs uppercase tracking-widest transition-all ${activeTab === 'notice' ? 'bg-emerald-700 text-white shadow-lg' : 'text-slate-400'}`}>নোটিশ/পোস্ট</button>
+          <button onClick={() => setActiveTab('notice')} className={`px-8 py-3 rounded-[18px] font-black text-xs uppercase tracking-widest transition-all ${activeTab === 'notice' ? 'bg-emerald-700 text-white shadow-lg' : 'text-slate-400'}`}>নোটিশ বোর্ড</button>
         </div>
       </div>
 
@@ -116,17 +119,13 @@ const HomeManagement: React.FC = () => {
                   <h3 className="text-xl font-black text-slate-900">নতুন পোল তৈরি করুন</h3>
                </div>
                <div className="space-y-6">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase px-2">পোলের প্রশ্ন</label>
-                    <textarea 
-                      value={pollQuestion}
-                      onChange={(e) => setPollQuestion(e.target.value)}
-                      placeholder="যেমন: আপনি কি প্রতিদিন লাইভ কুইজ চান?"
-                      className="w-full bg-slate-50 border border-slate-100 p-6 rounded-[32px] font-bold outline-none h-24 focus:bg-white focus:border-emerald-200 transition-all"
-                    />
-                  </div>
+                  <textarea 
+                    value={pollQuestion}
+                    onChange={(e) => setPollQuestion(e.target.value)}
+                    placeholder="পোলের প্রশ্ন লিখুন..."
+                    className="w-full bg-slate-50 border border-slate-100 p-6 rounded-[32px] font-bold outline-none h-24 focus:bg-white focus:border-emerald-200 transition-all"
+                  />
                   <div className="space-y-4">
-                    <label className="text-[10px] font-black text-slate-400 uppercase px-2">ভোটের অপশনসমূহ</label>
                     {pollOptions.map((opt, i) => (
                       <div key={i} className="flex gap-2">
                         <input 
@@ -136,7 +135,7 @@ const HomeManagement: React.FC = () => {
                             const n = [...pollOptions]; n[i] = e.target.value; setPollOptions(n);
                           }}
                           placeholder={`অপশন ${i+1}`}
-                          className="flex-grow bg-slate-50 border border-slate-100 p-5 rounded-2xl font-bold outline-none focus:bg-white"
+                          className="flex-grow bg-slate-50 border border-slate-100 p-5 rounded-2xl font-bold outline-none"
                         />
                         {pollOptions.length > 2 && (
                           <button onClick={() => setPollOptions(pollOptions.filter((_, idx) => idx !== i))} className="p-4 bg-rose-50 text-rose-500 rounded-2xl"><X size={18}/></button>
@@ -152,7 +151,7 @@ const HomeManagement: React.FC = () => {
                     disabled={isSaving}
                     className="w-full bg-emerald-700 text-white py-6 rounded-[32px] font-black text-lg shadow-xl shadow-emerald-700/20 flex items-center justify-center gap-3 active:scale-95 transition-all"
                   >
-                    {isSaving ? <Loader2 className="animate-spin" /> : <><Send size={20}/> পোল পাবলিশ করুন</>}
+                    {isSaving ? <Loader2 className="animate-spin" /> : <><Send size={20}/> পাবলিশ করুন</>}
                   </button>
                </div>
             </div>
@@ -163,27 +162,21 @@ const HomeManagement: React.FC = () => {
                   <h3 className="text-xl font-black text-slate-900">ছবিসহ নোটিশ পোস্ট করুন</h3>
                </div>
                <div className="space-y-6">
+                  <input 
+                    type="text" 
+                    value={noticeTitle}
+                    onChange={(e) => setNoticeTitle(e.target.value)}
+                    placeholder="নোটিশ টাইটেল"
+                    className="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl font-bold outline-none"
+                  />
+                  <textarea 
+                    value={noticeContent}
+                    onChange={(e) => setNoticeContent(e.target.value)}
+                    placeholder="বিস্তারিত এখানে লিখুন..."
+                    className="w-full bg-slate-50 border border-slate-100 p-6 rounded-[32px] font-bold h-32 outline-none"
+                  />
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase px-2">নোটিশ টাইটেল</label>
-                    <input 
-                      type="text" 
-                      value={noticeTitle}
-                      onChange={(e) => setNoticeTitle(e.target.value)}
-                      placeholder="যেমন: ১০% বোনাস অফার!"
-                      className="w-full bg-slate-50 border border-slate-100 p-5 rounded-2xl font-bold outline-none focus:bg-white"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase px-2">নোটিশ কন্টেন্ট</label>
-                    <textarea 
-                      value={noticeContent}
-                      onChange={(e) => setNoticeContent(e.target.value)}
-                      placeholder="বিস্তারিত এখানে লিখুন..."
-                      className="w-full bg-slate-50 border border-slate-100 p-6 rounded-[32px] font-bold h-32 outline-none focus:bg-white"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase px-2">ছবি আপলোড (অপশনাল)</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase px-2">ছবি আপলোড (ঐচ্ছিক)</label>
                     <div 
                       onClick={() => document.getElementById('notice-img')?.click()}
                       className="w-full h-48 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[32px] flex flex-col items-center justify-center cursor-pointer hover:bg-slate-100 transition-all overflow-hidden"
@@ -193,7 +186,7 @@ const HomeManagement: React.FC = () => {
                       ) : (
                         <>
                           <Camera className="text-slate-300 mb-2" size={32}/>
-                          <p className="text-[10px] font-black text-slate-400 uppercase">ক্লিক করে ছবি নির্বাচন করুন</p>
+                          <p className="text-[10px] font-black text-slate-400 uppercase">ছবি নির্বাচন করুন</p>
                         </>
                       )}
                     </div>
@@ -204,7 +197,7 @@ const HomeManagement: React.FC = () => {
                     disabled={isSaving}
                     className="w-full bg-blue-600 text-white py-6 rounded-[32px] font-black text-lg shadow-xl shadow-blue-600/20 flex items-center justify-center gap-3 active:scale-95 transition-all"
                   >
-                    {isSaving ? <Loader2 className="animate-spin" /> : <><Send size={20}/> পোস্ট পাবলিশ করুন</>}
+                    {isSaving ? <Loader2 className="animate-spin" /> : <><Send size={20}/> পাবলিশ করুন</>}
                   </button>
                </div>
             </div>
@@ -236,11 +229,6 @@ const HomeManagement: React.FC = () => {
                      <p className="text-[10px] text-slate-500 line-clamp-2">{n.content}</p>
                   </div>
                 ))
-              )}
-              {(activeTab === 'poll' ? polls : notices).length === 0 && (
-                <div className="p-10 text-center opacity-30">
-                   <p className="text-[10px] font-black uppercase tracking-widest">খালি রয়েছে</p>
-                </div>
               )}
            </div>
         </div>
