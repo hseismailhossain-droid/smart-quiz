@@ -7,7 +7,6 @@ import QuizScreen from './components/QuizScreen';
 import AdminLayout from './components/admin/AdminLayout';
 import { auth, db } from './services/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-// Added missing 'limit' import
 import { doc, onSnapshot, setDoc, updateDoc, collection, query, orderBy, addDoc, getDoc, deleteDoc, increment, serverTimestamp, where, limit } from 'firebase/firestore';
 import { UserProfile, QuizResult, Notification, DepositRequest, Lesson, UserReport, WithdrawRequest, Question } from './types';
 import { Settings } from 'lucide-react';
@@ -68,9 +67,9 @@ const App: React.FC = () => {
         });
         firestoreUnsubscribers.current.push(unsubNotif);
 
-        // History: Exams Listener
+        // History: Exams Listener (Client-side sorting to avoid Index error)
         const unsubExams = onSnapshot(
-          query(collection(db, 'quiz_attempts'), where('uid', '==', firebaseUser.uid), orderBy('timestamp', 'desc'), limit(50)),
+          query(collection(db, 'quiz_attempts'), where('uid', '==', firebaseUser.uid), limit(100)),
           (snap) => {
             const list = snap.docs.map(d => {
               const data = d.data();
@@ -79,19 +78,33 @@ const App: React.FC = () => {
                 subject: data.subject,
                 score: data.score,
                 total: data.total,
+                timestamp: data.timestamp,
                 date: data.timestamp ? new Date(data.timestamp.seconds * 1000).toLocaleDateString('bn-BD') : 'নতুন'
               } as QuizResult;
+            });
+            // Client-side sort: Descending order by timestamp
+            list.sort((a: any, b: any) => {
+              const timeA = a.timestamp?.seconds || 0;
+              const timeB = b.timestamp?.seconds || 0;
+              return timeB - timeA;
             });
             setHistory(prev => ({ ...prev, exams: list }));
           }
         );
         firestoreUnsubscribers.current.push(unsubExams);
 
-        // History: Mistakes Listener (Optional if you have a mistakes collection)
+        // History: Mistakes Listener (Client-side sorting)
         const unsubMistakes = onSnapshot(
-          query(collection(db, 'user_mistakes'), where('uid', '==', firebaseUser.uid), orderBy('timestamp', 'desc'), limit(50)),
+          query(collection(db, 'user_mistakes'), where('uid', '==', firebaseUser.uid), limit(100)),
           (snap) => {
-            setHistory(prev => ({ ...prev, mistakes: snap.docs.map(d => d.data() as Question) }));
+            const list = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+            // Client-side sort
+            list.sort((a: any, b: any) => {
+              const timeA = a.timestamp?.seconds || 0;
+              const timeB = b.timestamp?.seconds || 0;
+              return timeB - timeA;
+            });
+            setHistory(prev => ({ ...prev, mistakes: list as any }));
           }
         );
         firestoreUnsubscribers.current.push(unsubMistakes);
