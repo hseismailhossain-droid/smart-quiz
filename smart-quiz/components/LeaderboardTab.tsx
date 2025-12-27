@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Trophy, Medal, Star, ChevronUp, Loader2 } from 'lucide-react';
+import { Trophy, Medal, Star, ChevronUp, Loader2, User as UserIcon } from 'lucide-react';
 import { db, auth } from '../services/firebase';
 import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 
@@ -30,7 +30,7 @@ const LeaderboardTab: React.FC = () => {
   }, []);
 
   if (loading) return (
-    <div className="min-h-full bg-emerald-700 flex items-center justify-center">
+    <div className="min-h-full bg-emerald-800 flex items-center justify-center">
       <Loader2 className="text-white animate-spin" size={48} />
     </div>
   );
@@ -38,42 +38,97 @@ const LeaderboardTab: React.FC = () => {
   const topThree = users.slice(0, 3);
   const others = users.slice(3);
 
+  // Sorting for podium display: [2nd, 1st, 3rd]
+  const podiumOrder = [];
+  if (topThree[1]) podiumOrder.push(topThree[1]);
+  if (topThree[0]) podiumOrder.push(topThree[0]);
+  if (topThree[2]) podiumOrder.push(topThree[2]);
+
   return (
-    <div className="min-h-full bg-emerald-700 flex flex-col font-['Hind_Siliguri']">
-      <div className="p-6 text-white text-center">
-        <h2 className="text-2xl font-black mb-8">লিডারবোর্ড</h2>
+    <div className="min-h-full bg-emerald-800 flex flex-col font-['Hind_Siliguri'] overflow-hidden">
+      <div className="p-6 text-white text-center pb-12 relative">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-700/50 rounded-full blur-3xl -mr-16 -mt-16"></div>
+        <div className="absolute top-20 left-0 w-24 h-24 bg-emerald-700/30 rounded-full blur-2xl -ml-12"></div>
+        
+        <h2 className="text-2xl font-black mb-10 relative z-10">লিডারবোর্ড</h2>
         
         {/* Top 3 Podium */}
-        <div className="flex justify-center items-end gap-2 mb-8 h-48">
-          {topThree[1] && <PodiumItem user={topThree[1]} order={1} height="h-24" medalColor="text-gray-300" />}
-          {topThree[0] && <PodiumItem user={topThree[0]} order={2} height="h-32" medalColor="text-yellow-400" isWinner />}
-          {topThree[2] && <PodiumItem user={topThree[2]} order={3} height="h-20" medalColor="text-orange-400" />}
+        <div className="flex justify-center items-end gap-2 mb-4 h-64 relative z-10">
+          {podiumOrder.map((user, idx) => {
+            const isWinner = user.rank === 1;
+            const isSecond = user.rank === 2;
+            const isThird = user.rank === 3;
+            
+            let height = "h-24";
+            let medalColor = "text-orange-400";
+            if (isWinner) {
+              height = "h-40";
+              medalColor = "text-yellow-400";
+            } else if (isSecond) {
+              height = "h-32";
+              medalColor = "text-gray-300";
+            }
+
+            return (
+              <PodiumItem 
+                key={user.rank}
+                user={user} 
+                height={height} 
+                medalColor={medalColor} 
+                isWinner={isWinner} 
+              />
+            );
+          })}
         </div>
       </div>
 
-      <div className="flex-grow bg-white rounded-t-[48px] p-6 shadow-2xl overflow-y-auto no-scrollbar pb-24">
-        <div className="space-y-4">
+      <div className="flex-grow bg-white rounded-t-[48px] p-6 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] overflow-y-auto no-scrollbar pb-32">
+        <div className="space-y-3">
           {others.map((user) => (
             <div 
-              key={user.rank} 
-              className="flex items-center gap-4 p-4 rounded-[24px] border border-gray-50 bg-white hover:border-emerald-200 transition-all shadow-sm"
+              key={user.id || user.rank} 
+              className="flex items-center gap-4 p-4 rounded-[28px] bg-slate-50/50 border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/30 transition-all duration-300 group"
             >
-              <span className="w-8 font-black text-sm text-gray-400">#{user.rank}</span>
-              <img src={user.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`} className="w-10 h-10 rounded-xl border-2 border-white shadow-sm object-cover" alt={user.name} />
+              <div className="w-10 text-center">
+                <span className="font-black text-sm text-slate-400 group-hover:text-emerald-600 transition-colors">#{user.rank}</span>
+              </div>
+              
+              <div className="w-12 h-12 rounded-2xl bg-white border border-slate-100 shadow-sm overflow-hidden shrink-0 flex items-center justify-center">
+                {user.avatarUrl ? (
+                  <img src={user.avatarUrl} className="w-full h-full object-cover" alt={user.name} onError={(e) => {
+                    (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`;
+                  }} />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-slate-50 text-slate-300">
+                    <UserIcon size={20} />
+                  </div>
+                )}
+              </div>
+
               <div className="flex-grow">
-                <h4 className="font-black text-sm text-gray-900 truncate">{user.name}</h4>
-                <div className="flex items-center gap-1 text-[10px] text-gray-400 font-bold uppercase">
-                  <Star size={10} fill="currentColor" /> {user.totalPoints || 0} পয়েন্ট
+                <h4 className="font-black text-sm text-slate-800 truncate">{user.name || 'Anonymous'}</h4>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <div className="w-4 h-4 rounded-full bg-amber-100 flex items-center justify-center">
+                    <Star size={10} className="text-amber-600" fill="currentColor" />
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{user.totalPoints || 0} পয়েন্ট</span>
                 </div>
               </div>
-              <div className="text-emerald-600 text-xs font-black">
-                <ChevronUp size={14} className="inline mr-0.5" /> 
+
+              <div className="flex flex-col items-end gap-1">
+                <div className="p-1.5 bg-emerald-100 text-emerald-700 rounded-lg">
+                  <ChevronUp size={14} />
+                </div>
               </div>
             </div>
           ))}
+          
           {users.length === 0 && (
-            <div className="py-20 text-center text-slate-300 font-black uppercase tracking-widest text-xs">
-              লিডারবোর্ড লোড করা সম্ভব হচ্ছে না
+            <div className="py-24 text-center">
+              <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-100">
+                <Trophy size={40} className="text-slate-200" />
+              </div>
+              <p className="text-slate-300 font-black uppercase tracking-widest text-[10px]">লিডারবোর্ড এখনো আপডেট করা হয়নি</p>
             </div>
           )}
         </div>
@@ -82,19 +137,37 @@ const LeaderboardTab: React.FC = () => {
   );
 };
 
-const PodiumItem = ({ user, order, height, medalColor, isWinner }: any) => (
-  <div className={`flex flex-col items-center ${order === 2 ? 'z-10' : 'opacity-90'}`}>
-    <div className={`relative mb-2 ${isWinner ? 'scale-110' : 'scale-95'}`}>
-      <img src={user.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`} className="w-16 h-16 rounded-[20px] border-4 border-white shadow-lg object-cover bg-white" alt={user.name} />
-      <div className={`absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-white shadow-md flex items-center justify-center ${medalColor}`}>
-        <Medal size={16} fill="currentColor" />
+const PodiumItem = ({ user, height, medalColor, isWinner }: any) => {
+  const avatarSeed = user.name ? encodeURIComponent(user.name) : Math.random().toString();
+  const avatarUrl = user.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${avatarSeed}`;
+
+  return (
+    <div className={`flex flex-col items-center transition-all duration-500 ${isWinner ? 'z-10' : 'opacity-90'}`}>
+      <div className={`relative mb-3 ${isWinner ? 'scale-110 -translate-y-2' : 'scale-90'}`}>
+        <div className={`w-16 h-16 md:w-20 md:h-20 rounded-[28px] border-4 border-white shadow-2xl overflow-hidden bg-slate-100 flex items-center justify-center`}>
+          <img 
+            src={avatarUrl} 
+            className="w-full h-full object-cover" 
+            alt={user.name}
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${avatarSeed}`;
+            }}
+          />
+        </div>
+        <div className={`absolute -bottom-2 -right-2 w-8 h-8 md:w-10 md:h-10 rounded-xl bg-white shadow-lg flex items-center justify-center ${medalColor} border border-slate-50`}>
+          <Medal size={isWinner ? 22 : 18} fill="currentColor" />
+        </div>
+      </div>
+      
+      <div className={`${height} w-24 bg-white/10 rounded-t-[32px] backdrop-blur-md flex flex-col items-center justify-center p-3 text-white border-x border-t border-white/20 shadow-[0_-10px_20px_rgba(0,0,0,0.1)]`}>
+        <span className="text-[10px] font-black uppercase truncate w-full text-center mb-1 leading-tight">{user.name || 'Anonymous'}</span>
+        <div className="flex items-center gap-1">
+          <Star size={10} className="text-amber-400" fill="currentColor" />
+          <span className="text-xs font-black">{user.totalPoints || 0}</span>
+        </div>
       </div>
     </div>
-    <div className={`${height} w-20 bg-white/20 rounded-t-2xl backdrop-blur-md flex flex-col items-center justify-center p-2 text-white`}>
-      <span className="text-[10px] font-black uppercase truncate w-full text-center mb-1">{user.name}</span>
-      <span className="text-xs font-black">{user.totalPoints || 0}</span>
-    </div>
-  </div>
-);
+  );
+};
 
 export default LeaderboardTab;
