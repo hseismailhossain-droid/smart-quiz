@@ -1,12 +1,13 @@
 
 import { Bell, BookOpen, Trophy, Flame, Star, LogOut, Edit3, Share2, Wallet, PlusCircle, ArrowUpRight, X, Image as ImageIcon, CheckCircle2, BarChart3, Users } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
-import { Notification, UserProfile, Lesson, Poll, AdminNotice } from '../types';
+import { Notification, UserProfile, Lesson, Poll, AdminNotice, QuizResult, Question } from '../types';
 import { db, auth } from '../services/firebase';
 import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 
 interface HomeTabProps {
   user: UserProfile;
+  history: { exams: QuizResult[], mistakes: Question[], marked: Question[] };
   notifications: Notification[];
   lessons: Lesson[];
   onShowNotifications: () => void;
@@ -19,7 +20,7 @@ interface HomeTabProps {
 }
 
 const HomeTab: React.FC<HomeTabProps> = ({ 
-  user, notifications, onShowNotifications, onLogout, onSubjectSelect, onEditProfile, onSubmitDeposit, onSubmitWithdraw 
+  user, history, notifications, onShowNotifications, onLogout, onSubjectSelect, onEditProfile, onSubmitDeposit, onSubmitWithdraw 
 }) => {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [specialQuizzes, setSpecialQuizzes] = useState<any[]>([]);
@@ -145,6 +146,14 @@ const HomeTab: React.FC<HomeTabProps> = ({
          </div>
       </div>
 
+      {/* Dynamic Stats Row */}
+      <div className="grid grid-cols-4 gap-3 bg-gray-50 p-6 rounded-[44px] border border-gray-100 mx-1 shadow-inner">
+        <StatItem icon={<Trophy className="text-yellow-500" size={18}/>} value={user.totalPoints?.toString() || "0"} label="পয়েন্ট" />
+        <StatItem icon={<BookOpen className="text-blue-500" size={18}/>} value={history.exams.length.toString() || "0"} label="পরীক্ষা" />
+        <StatItem icon={<Star className="text-emerald-500" size={18}/>} value="৫ম" label="র‍্যাংক" />
+        <StatItem icon={<Flame className="text-orange-500" size={18}/>} value={user.streak?.toString() || "0"} label="স্ট্রিক" />
+      </div>
+
       {adminNotices.length > 0 && (
         <div className="px-1">
           <h4 className="font-black text-gray-900 text-xl flex items-center gap-2 mb-4">
@@ -167,13 +176,6 @@ const HomeTab: React.FC<HomeTabProps> = ({
           </div>
         </div>
       )}
-
-      <div className="grid grid-cols-4 gap-3 bg-gray-50 p-6 rounded-[44px] border border-gray-100 mx-1">
-        <StatItem icon={<Trophy className="text-yellow-500" size={18}/>} value={user.totalPoints?.toString() || "0"} label="পয়েন্ট" />
-        <StatItem icon={<BookOpen className="text-blue-500" size={18}/>} value={user.playedQuizzes?.length.toString() || "0"} label="পরীক্ষা" />
-        <StatItem icon={<Star className="text-emerald-500" size={18}/>} value="৫ম" label="র‍্যাংক" />
-        <StatItem icon={<Flame className="text-orange-500" size={18}/>} value={user.streak?.toString() || "0"} label="স্ট্রিক" />
-      </div>
 
       <div className="px-1">
         <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-8 rounded-[48px] text-white shadow-xl relative overflow-hidden group active:scale-[0.98] transition-all cursor-pointer" onClick={handleShareApp}>
