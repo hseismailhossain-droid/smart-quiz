@@ -68,6 +68,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
         return (
           <HomeTab 
             user={user} 
+            history={history}
             notifications={notifications} 
             lessons={lessons} 
             onShowNotifications={() => setShowNotifications(true)} 
