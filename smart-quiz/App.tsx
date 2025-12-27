@@ -58,12 +58,12 @@ const App: React.FC = () => {
         });
         firestoreUnsubscribers.current.push(unsubUser);
 
-        const unsubNotif = onSnapshot(query(collection(db, 'notifications'), orderBy('timestamp', 'desc')), (snapshot) => {
+        const unsubNotif = onSnapshot(query(collection(db, 'notifications'), orderBy('timestamp', 'desc'), limit(20)), (snapshot) => {
           setNotifications(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification)));
         });
         firestoreUnsubscribers.current.push(unsubNotif);
 
-        // History: Exams Listener
+        // Exams Listener - Sorted Newest First
         const unsubExams = onSnapshot(
           query(collection(db, 'quiz_attempts'), where('uid', '==', firebaseUser.uid), limit(50)),
           (snap) => {
@@ -73,24 +73,24 @@ const App: React.FC = () => {
               const dateStr = ts ? new Date(ts.seconds * 1000).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'numeric', day: 'numeric' }) : 'নতুন';
               return { id: d.id, ...data, date: dateStr } as any;
             });
-            list.sort((a, b) => (b.timestamp?.seconds || Date.now()) - (a.timestamp?.seconds || 0));
-            setHistory(prev => ({ ...prev, exams: list.reverse() }));
+            list.sort((a, b) => (b.timestamp?.seconds || (Date.now()/1000)) - (a.timestamp?.seconds || 0));
+            setHistory(prev => ({ ...prev, exams: list }));
           }
         );
         firestoreUnsubscribers.current.push(unsubExams);
 
-        // History: Mistakes Listener
+        // Mistakes Listener
         const unsubMistakes = onSnapshot(
           query(collection(db, 'user_mistakes'), where('uid', '==', firebaseUser.uid), limit(100)),
           (snap) => {
             const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
-            list.sort((a, b) => (b.timestamp?.seconds || Date.now()) - (a.timestamp?.seconds || 0));
-            setHistory(prev => ({ ...prev, mistakes: list.reverse() }));
+            list.sort((a, b) => (b.timestamp?.seconds || (Date.now()/1000)) - (a.timestamp?.seconds || 0));
+            setHistory(prev => ({ ...prev, mistakes: list }));
           }
         );
         firestoreUnsubscribers.current.push(unsubMistakes);
 
-        // History: Bookmarks Listener
+        // Bookmarks Listener
         const unsubBookmarks = onSnapshot(
           query(collection(db, 'user_bookmarks'), where('uid', '==', firebaseUser.uid), limit(100)),
           (snap) => {
@@ -115,17 +115,16 @@ const App: React.FC = () => {
   const handleFinishQuiz = async (res: QuizResult) => {
     if (auth.currentUser) {
       try {
-        // Increment Points and Streak
         const userRef = doc(db, 'users', auth.currentUser.uid);
+        // Point addition is 10 per correct answer
         await updateDoc(userRef, {
           totalPoints: increment(res.score * 10),
           streak: increment(1)
         });
 
-        // Save Attempt to History
         await addDoc(collection(db, 'quiz_attempts'), {
           uid: auth.currentUser.uid,
-          userName: user?.name || 'User',
+          userName: user?.name || 'Anonymous',
           quizId: res.quizId || 'mock',
           subject: res.subject,
           score: res.score,
@@ -133,7 +132,7 @@ const App: React.FC = () => {
           timestamp: serverTimestamp()
         });
       } catch (err) {
-        console.error("Error saving quiz result:", err);
+        console.error("Quiz Result Error:", err);
       }
     }
     setView('main');
