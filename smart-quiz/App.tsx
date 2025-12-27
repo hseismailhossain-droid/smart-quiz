@@ -63,34 +63,39 @@ const App: React.FC = () => {
         });
         firestoreUnsubscribers.current.push(unsubNotif);
 
-        // Exams Listener - Sorted Newest First
+        // Exams History: UID ফিল্টার এবং ক্লায়েন্ট সাইড সর্টিং (ইন্ডেক্স এরর এড়াতে)
         const unsubExams = onSnapshot(
           query(collection(db, 'quiz_attempts'), where('uid', '==', firebaseUser.uid), limit(50)),
           (snap) => {
             const list = snap.docs.map(d => {
               const data = d.data();
               const ts = data.timestamp;
-              const dateStr = ts ? new Date(ts.seconds * 1000).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'numeric', day: 'numeric' }) : 'নতুন';
+              const dateStr = ts ? new Date(ts.seconds * 1000).toLocaleDateString('bn-BD') : 'এখন মাত্র';
               return { id: d.id, ...data, date: dateStr } as any;
             });
-            list.sort((a, b) => (b.timestamp?.seconds || (Date.now()/1000)) - (a.timestamp?.seconds || 0));
+            // Newest first sorting
+            list.sort((a, b) => {
+              const timeA = a.timestamp?.seconds || Date.now() / 1000;
+              const timeB = b.timestamp?.seconds || Date.now() / 1000;
+              return timeB - timeA;
+            });
             setHistory(prev => ({ ...prev, exams: list }));
           }
         );
         firestoreUnsubscribers.current.push(unsubExams);
 
-        // Mistakes Listener
+        // Mistakes History
         const unsubMistakes = onSnapshot(
           query(collection(db, 'user_mistakes'), where('uid', '==', firebaseUser.uid), limit(100)),
           (snap) => {
             const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
-            list.sort((a, b) => (b.timestamp?.seconds || (Date.now()/1000)) - (a.timestamp?.seconds || 0));
+            list.sort((a, b) => (b.timestamp?.seconds || Date.now() / 1000) - (a.timestamp?.seconds || 0));
             setHistory(prev => ({ ...prev, mistakes: list }));
           }
         );
         firestoreUnsubscribers.current.push(unsubMistakes);
 
-        // Bookmarks Listener
+        // Bookmarks History
         const unsubBookmarks = onSnapshot(
           query(collection(db, 'user_bookmarks'), where('uid', '==', firebaseUser.uid), limit(100)),
           (snap) => {
@@ -116,23 +121,28 @@ const App: React.FC = () => {
     if (auth.currentUser) {
       try {
         const userRef = doc(db, 'users', auth.currentUser.uid);
-        // Point addition is 10 per correct answer
+        
+        // ১. ইউজারের পয়েন্ট এবং স্ট্রিক আপডেট করুন (প্রতি সঠিক উত্তরের জন্য ১০ পয়েন্ট)
+        const earnedPoints = Number(res.score) * 10;
         await updateDoc(userRef, {
-          totalPoints: increment(res.score * 10),
+          totalPoints: increment(earnedPoints),
           streak: increment(1)
         });
 
+        // ২. কুইজ অ্যাটেম্পট সেভ করুন হিস্ট্রির জন্য
         await addDoc(collection(db, 'quiz_attempts'), {
           uid: auth.currentUser.uid,
           userName: user?.name || 'Anonymous',
           quizId: res.quizId || 'mock',
           subject: res.subject,
-          score: res.score,
-          total: res.total,
+          score: Number(res.score),
+          total: Number(res.total),
           timestamp: serverTimestamp()
         });
+
+        console.log("Quiz data updated successfully");
       } catch (err) {
-        console.error("Quiz Result Error:", err);
+        console.error("Error updating quiz result:", err);
       }
     }
     setView('main');
@@ -142,7 +152,16 @@ const App: React.FC = () => {
   if (view === 'auth') return <AuthScreen onLogin={() => {}} lang={lang} toggleLanguage={() => setLang(lang === 'bn' ? 'en' : 'bn')} />;
   if (view === 'setup') return <SetupScreen onComplete={async (name, cat) => {
     if (!auth.currentUser) return;
-    await setDoc(doc(db, 'users', auth.currentUser.uid), { name, email: auth.currentUser.email, category: cat, balance: 10, totalPoints: 100, streak: 1, playedQuizzes: [], avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=" + name });
+    await setDoc(doc(db, 'users', auth.currentUser.uid), { 
+      name, 
+      email: auth.currentUser.email, 
+      category: cat, 
+      balance: 10, 
+      totalPoints: 0, 
+      streak: 1, 
+      playedQuizzes: [], 
+      avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=" + name 
+    });
     setView('main');
   }} lang={lang} />;
   
