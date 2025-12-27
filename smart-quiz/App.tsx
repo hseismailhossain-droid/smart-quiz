@@ -7,8 +7,9 @@ import QuizScreen from './components/QuizScreen';
 import AdminLayout from './components/admin/AdminLayout';
 import { auth, db } from './services/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, onSnapshot, setDoc, updateDoc, collection, query, orderBy, addDoc, getDoc, deleteDoc, increment, serverTimestamp } from 'firebase/firestore';
-import { UserProfile, QuizResult, Notification, DepositRequest, Lesson, UserReport, WithdrawRequest } from './types';
+// Added missing 'limit' import
+import { doc, onSnapshot, setDoc, updateDoc, collection, query, orderBy, addDoc, getDoc, deleteDoc, increment, serverTimestamp, where, limit } from 'firebase/firestore';
+import { UserProfile, QuizResult, Notification, DepositRequest, Lesson, UserReport, WithdrawRequest, Question } from './types';
 import { Settings } from 'lucide-react';
 import { ADMIN_EMAIL } from './constants';
 import { Language } from './services/translations';
@@ -18,6 +19,14 @@ const App: React.FC = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [lang, setLang] = useState<Language>('bn');
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  
+  // History States
+  const [history, setHistory] = useState<{
+    exams: QuizResult[];
+    mistakes: Question[];
+    marked: Question[];
+  }>({ exams: [], mistakes: [], marked: [] });
+
   const [activeSubject, setActiveSubject] = useState<string | null>(null);
   const [quizConfig, setQuizConfig] = useState<{ 
     numQuestions: number; 
@@ -39,25 +48,54 @@ const App: React.FC = () => {
       if (firebaseUser) {
         const isUserAdmin = firebaseUser.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 
-        const unsubUser = onSnapshot(doc(db, 'users', firebaseUser.uid), 
-          (docSnap) => {
-            if (docSnap.exists()) {
-              setUser(docSnap.data() as UserProfile);
-              if (view === 'loading' || view === 'auth' || view === 'setup') {
-                setView(isUserAdmin ? 'admin' : 'main');
-              }
-            } else {
-              if (isUserAdmin) setView('admin');
-              else setView('setup');
+        // User Profile Listener
+        const unsubUser = onSnapshot(doc(db, 'users', firebaseUser.uid), (docSnap) => {
+          if (docSnap.exists()) {
+            setUser(docSnap.data() as UserProfile);
+            if (view === 'loading' || view === 'auth' || view === 'setup') {
+              setView(isUserAdmin ? 'admin' : 'main');
             }
-          });
+          } else {
+            if (isUserAdmin) setView('admin');
+            else setView('setup');
+          }
+        });
         firestoreUnsubscribers.current.push(unsubUser);
 
-        const unsubNotif = onSnapshot(query(collection(db, 'notifications'), orderBy('timestamp', 'desc')), 
-          (snapshot) => {
-            setNotifications(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification)));
-          });
+        // Notifications Listener
+        const unsubNotif = onSnapshot(query(collection(db, 'notifications'), orderBy('timestamp', 'desc')), (snapshot) => {
+          setNotifications(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification)));
+        });
         firestoreUnsubscribers.current.push(unsubNotif);
+
+        // History: Exams Listener
+        const unsubExams = onSnapshot(
+          query(collection(db, 'quiz_attempts'), where('uid', '==', firebaseUser.uid), orderBy('timestamp', 'desc'), limit(50)),
+          (snap) => {
+            const list = snap.docs.map(d => {
+              const data = d.data();
+              return {
+                id: d.id,
+                subject: data.subject,
+                score: data.score,
+                total: data.total,
+                date: data.timestamp ? new Date(data.timestamp.seconds * 1000).toLocaleDateString('bn-BD') : 'নতুন'
+              } as QuizResult;
+            });
+            setHistory(prev => ({ ...prev, exams: list }));
+          }
+        );
+        firestoreUnsubscribers.current.push(unsubExams);
+
+        // History: Mistakes Listener (Optional if you have a mistakes collection)
+        const unsubMistakes = onSnapshot(
+          query(collection(db, 'user_mistakes'), where('uid', '==', firebaseUser.uid), orderBy('timestamp', 'desc'), limit(50)),
+          (snap) => {
+            setHistory(prev => ({ ...prev, mistakes: snap.docs.map(d => d.data() as Question) }));
+          }
+        );
+        firestoreUnsubscribers.current.push(unsubMistakes);
+
       } else {
         setUser(null);
         setView('auth');
@@ -89,7 +127,7 @@ const App: React.FC = () => {
     setView('main');
   };
 
-  if (view === 'loading') return <div className="min-h-screen flex items-center justify-center bg-white"><div className="w-12 h-12 border-4 border-emerald-700 border-t-transparent rounded-full animate-spin"></div></div>;
+  if (view === 'loading') return <div className="min-h-screen items-center justify-center bg-white flex"><div className="w-12 h-12 border-4 border-emerald-700 border-t-transparent rounded-full animate-spin"></div></div>;
 
   if (view === 'auth') return <AuthScreen onLogin={() => {}} lang={lang} toggleLanguage={() => setLang(lang === 'bn' ? 'en' : 'bn')} />;
   
@@ -120,7 +158,7 @@ const App: React.FC = () => {
       {view === 'admin' ? (
         <AdminLayout 
           onExit={() => setView('main')} 
-          onLogout={() => signOut(auth)} 
+          onLogout={() => { signOut(auth); }} 
           onSendNotification={()=>{}} 
           onDeleteNotification={()=>{}}
           onDeleteQuiz={async (id, type) => {
@@ -128,18 +166,11 @@ const App: React.FC = () => {
              await deleteDoc(doc(db, col, id));
           }}
           notifications={notifications}
-          depositRequests={[]}
-          withdrawRequests={[]}
-          userReports={[]}
-          onResolveReport={()=>{}}
-          onApproveDeposit={()=>{}} 
-          onRejectDeposit={()=>{}}
-          onApproveWithdraw={()=>{}}
-          onRejectWithdraw={()=>{}}
         />
       ) : (
         <MainLayout 
-          user={user!} history={{exams: [], mistakes: [], marked: []}} 
+          user={user!} 
+          history={history} 
           lang={lang}
           toggleLanguage={() => setLang(lang === 'bn' ? 'en' : 'bn')}
           notifications={notifications} setNotifications={()=>{}} 
