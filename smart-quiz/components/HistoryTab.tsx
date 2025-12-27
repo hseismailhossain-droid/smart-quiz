@@ -25,7 +25,7 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ history }) => {
                    <Trophy size={28} />
                 </div>
                 <div>
-                  <h4 className="font-black text-slate-800 text-sm leading-tight mb-1 truncate max-w-[120px]">{res.subject}</h4>
+                  <h4 className="font-black text-slate-800 text-sm leading-tight mb-1 truncate max-w-[120px]">{res.subject || 'সাধারন জ্ঞান'}</h4>
                   <div className="flex items-center gap-2">
                      <Clock size={12} className="text-slate-300" />
                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{res.date}</p>
@@ -34,7 +34,7 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ history }) => {
               </div>
               <div className="text-right">
                 <p className="text-2xl font-black text-emerald-700 leading-none">{res.score}/{res.total}</p>
-                <p className="text-[9px] text-slate-400 font-black uppercase mt-1">পয়েন্ট: +{res.score * 10}</p>
+                <p className="text-[9px] text-slate-400 font-black uppercase mt-1">পয়েন্ট: +{Number(res.score) * 10}</p>
               </div>
             </div>
           ))}
@@ -52,14 +52,14 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ history }) => {
               </div>
               <div className="flex items-start gap-4 mb-5">
                 <div className="w-10 h-10 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center shrink-0 shadow-sm"><AlertCircle size={20} /></div>
-                <h4 className="font-black text-slate-800 text-sm leading-relaxed pt-1 pr-8">{q.question}</h4>
+                <h4 className="font-black text-slate-800 text-sm leading-relaxed pt-1 pr-8">{q.question || 'প্রশ্ন পাওয়া যায়নি'}</h4>
               </div>
               <div className="space-y-3">
                 <div className="p-4 bg-emerald-50 rounded-2xl flex items-center gap-3 border border-emerald-100">
                   <CheckCircle2 size={18} className="text-emerald-700" />
                   <div>
                     <p className="text-[9px] font-black text-emerald-600 uppercase">সঠিক উত্তর</p>
-                    <span className="text-xs font-black text-emerald-900">{q.options?.[q.correctAnswer] || 'ডাটা পাওয়া যায়নি'}</span>
+                    <span className="text-xs font-black text-emerald-900">{q.options && q.options[q.correctAnswer] ? q.options[q.correctAnswer] : 'অজানা'}</span>
                   </div>
                 </div>
               </div>
@@ -78,7 +78,7 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ history }) => {
                 <div className="w-10 h-10 bg-emerald-50 text-emerald-700 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
                   <Bookmark size={20} fill="currentColor" />
                 </div>
-                <h4 className="font-black text-slate-800 text-sm leading-relaxed pt-1">{q.question}</h4>
+                <h4 className="font-black text-slate-800 text-sm leading-relaxed pt-1">{q.question || 'প্রশ্ন পাওয়া যায়নি'}</h4>
               </div>
               <div className="grid grid-cols-1 gap-3">
                 {q.options?.map((opt, i) => (
