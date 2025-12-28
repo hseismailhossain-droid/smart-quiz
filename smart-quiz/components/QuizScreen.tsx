@@ -28,6 +28,8 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
+  const [correctCount, setCorrectCount] = useState(0);
+  const [wrongCount, setWrongCount] = useState(0);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
   const [finished, setFinished] = useState(false);
@@ -38,6 +40,8 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
     setLoading(true);
     setError(null);
     try {
+      let fetchedQuestions: Question[] = [];
+      
       if (quizId && quizId !== 'mock') {
         const targetCollection = collectionName || 'mock_quizzes';
         const docRef = doc(db, targetCollection, quizId);
@@ -45,15 +49,26 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
         if (docSnap.exists()) {
           const quizData = docSnap.data();
           if (quizData.manualQuestions && quizData.manualQuestions.length > 0) {
-            setQuestions(quizData.manualQuestions);
-            setLoading(false);
-            return;
+            fetchedQuestions = quizData.manualQuestions;
           }
         }
       }
-      const data = await generateQuestions(subject, numQuestions, lang);
-      if (data && !data.error) setQuestions(data);
-      else throw new Error(data?.details || "Failed to load questions");
+
+      // If no manual questions found, generate via AI
+      if (fetchedQuestions.length === 0) {
+        const data = await generateQuestions(subject, numQuestions, lang);
+        if (data && !data.error) {
+          fetchedQuestions = data;
+        } else {
+          throw new Error(data?.details || "Failed to load questions");
+        }
+      }
+
+      // CRITICAL FIX: Slice the questions array to match user's selected count
+      // This ensures if admin gave 100 but user chose 10, only 10 are shown.
+      const randomized = fetchedQuestions.sort(() => 0.5 - Math.random());
+      setQuestions(randomized.slice(0, numQuestions));
+      
     } catch (e: any) {
       setError({ message: lang === 'bn' ? "প্রশ্নপত্র লোড করা সম্ভব হয়নি।" : "Failed to load questions." });
     } finally {
@@ -118,8 +133,15 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
     const correctIdx = questions[currentIndex].correctAnswer;
     
     if (idx === correctIdx) {
-      setScore(s => s + 1);
+      setCorrectCount(c => c + 1);
+      setScore(s => s + 1); // Correct answer: +1
     } else {
+      setWrongCount(w => w + 1);
+      // Negative Marking for Paid Quizzes: -0.25
+      if (isPaid) {
+        setScore(s => s - 0.25);
+      }
+      
       if (auth.currentUser) {
         try {
           await addDoc(collection(db, 'user_mistakes'), {
@@ -157,10 +179,24 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
       <Trophy size={80} className="text-emerald-700 mb-6" />
       <h2 className="text-3xl font-black text-slate-900 mb-6">কুইজ শেষ!</h2>
       <div className="bg-slate-50 p-10 rounded-[44px] w-full mb-10 border border-slate-100">
-        <p className="text-5xl font-black text-emerald-700">{score} / {questions.length}</p>
-        <p className="text-[10px] font-black text-slate-400 uppercase mt-4">আপনার স্কোর</p>
+        <p className="text-5xl font-black text-emerald-700">{score.toFixed(2)}</p>
+        <div className="flex justify-around mt-4">
+           <div className="text-center">
+              <p className="text-[10px] font-black text-emerald-600 uppercase">সঠিক</p>
+              <p className="font-black">{correctCount}</p>
+           </div>
+           <div className="text-center">
+              <p className="text-[10px] font-black text-rose-500 uppercase">ভুল</p>
+              <p className="font-black">{wrongCount}</p>
+           </div>
+           <div className="text-center">
+              <p className="text-[10px] font-black text-slate-400 uppercase">মোট প্রশ্ন</p>
+              <p className="font-black">{questions.length}</p>
+           </div>
+        </div>
+        <p className="text-[10px] font-black text-slate-400 uppercase mt-6 tracking-widest">আপনার মোট মার্কস</p>
       </div>
-      <button onClick={() => onFinish({ score, total: questions.length, subject, date: new Date().toLocaleDateString(), quizId })} className="w-full bg-slate-900 text-white py-6 rounded-[32px] font-black text-lg shadow-xl">ফলাফল জমা দিন</button>
+      <button onClick={() => onFinish({ score: Number(score.toFixed(2)), total: questions.length, subject, date: new Date().toLocaleDateString(), quizId })} className="w-full bg-slate-900 text-white py-6 rounded-[32px] font-black text-lg shadow-xl">ফলাফল জমা দিন</button>
     </div>
   );
 
@@ -214,6 +250,9 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
           <div className="mt-8 p-6 bg-blue-50 rounded-3xl border border-blue-100 animate-in fade-in slide-in-from-top-2">
             <p className="text-[10px] font-black text-blue-700 uppercase mb-2">ব্যাখ্যা:</p>
             <p className="text-xs text-blue-900 font-bold leading-relaxed">{q.explanation}</p>
+            {isPaid && selectedOption !== -1 && selectedOption !== q.correctAnswer && (
+              <p className="mt-2 text-[9px] font-black text-rose-600 uppercase">পেইড কুইজ: ভুল উত্তরের জন্য ০.২৫ মার্ক কাটা হয়েছে</p>
+            )}
           </div>
         )}
       </div>
