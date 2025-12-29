@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Notification, UserProfile, Lesson, Poll, AdminNotice, QuizResult, Question } from '../types';
 import { db, auth } from '../services/firebase';
 import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import AdBanner from './AdBanner';
 
 interface HomeTabProps {
   user: UserProfile;
@@ -56,15 +57,24 @@ const HomeTab: React.FC<HomeTabProps> = ({
       url: window.location.origin,
     };
 
+    const fallbackToClipboard = async () => {
+      try {
+        await navigator.clipboard.writeText(`${shareData.text}\n${shareData.url}`);
+        alert('অ্যাপ লিঙ্ক কপি করা হয়েছে!');
+      } catch (e) {
+        alert('শেয়ার করা সম্ভব হয়নি।');
+      }
+    };
+
     try {
       if (navigator.share) {
         await navigator.share(shareData);
       } else {
-        await navigator.clipboard.writeText(shareData.text);
-        alert('অ্যাপ লিঙ্ক কপি করা হয়েছে!');
+        await fallbackToClipboard();
       }
     } catch (err) {
-      console.log('Error sharing:', err);
+      if ((err as Error).name === 'AbortError') return;
+      await fallbackToClipboard();
     }
   };
 
@@ -154,7 +164,7 @@ const HomeTab: React.FC<HomeTabProps> = ({
         <StatItem icon={<Flame className="text-orange-500" size={18}/>} value={user.streak?.toString() || "0"} label="স্ট্রিক" />
       </div>
 
-      <AdBanner/>
+      <AdBanner />
 
       {adminNotices.length > 0 && (
         <div className="px-1">
