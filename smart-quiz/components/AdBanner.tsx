@@ -18,11 +18,15 @@ const AdBanner: React.FC<AdBannerProps> = ({ slot, format = 'auto', className = 
   }, []);
 
   return (
-    <div className={`my-4 overflow-hidden rounded-xl bg-slate-50 flex justify-center items-center border border-dashed border-slate-200 min-h-[100px] ${className}`}>
+    <div className={`my-4 overflow-hidden rounded-xl bg-white flex justify-center items-center border border-slate-100 min-h-[100px] ${className}`}>
+      {/* 
+        data-ad-client: আপনার পাবলিশার আইডি (ca-pub-3064118239935067)
+        data-ad-slot: আপনার ব্যানারের স্লট আইডি (8046725911)
+      */}
       <ins className="adsbygoogle"
            style={{ display: 'block' }}
            data-ad-client="ca-pub-3064118239935067"
-           data-ad-slot={slot || "default"}
+           data-ad-slot={slot || "8046725911"}
            data-ad-format={format}
            data-full-width-responsive="true"></ins>
     </div>
