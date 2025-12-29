@@ -3,9 +3,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   Heart, MessageCircle, Globe, Send, Trash2, Edit3, Eye, X, 
   Ghost, Camera, Plus, Loader2, Share2, Youtube, Facebook, 
-  Link as LinkIcon, Smile, MoreHorizontal, Image as ImageIcon,
+  Link as LinkIcon, Smile, MoreHorizontal, ImageIcon,
   CheckCircle2, PlayCircle, MessageSquare, Sparkles, LayoutGrid,
-  AtSign, Reply, ShieldAlert, MoreVertical
+  AtSign, Reply, ShieldAlert, MoreVertical, ThumbsUp
 } from 'lucide-react';
 import { Post, UserProfile, Comment as CommentType, Story } from '../types';
 import { db, auth } from '../services/firebase';
@@ -25,7 +25,15 @@ const ConfirmModal = ({ show, title, message, onConfirm, onCancel }: any) => {
         <h4 className="text-xl font-black text-slate-900 mb-2">{title}</h4>
         <p className="text-xs text-slate-400 font-bold mb-8 leading-relaxed">{message}</p>
         <div className="flex flex-col gap-3">
-          <button onClick={onConfirm} className="w-full bg-rose-600 text-white py-4 rounded-2xl font-bold text-sm shadow-lg active:scale-95 transition-all">হ্যাঁ, মুছে ফেলুন</button>
+          <button 
+            onClick={() => {
+              onConfirm();
+              // Modal closes via onConfirm's state update
+            }} 
+            className="w-full bg-rose-600 text-white py-4 rounded-2xl font-bold text-sm shadow-lg active:scale-95 transition-all"
+          >
+            হ্যাঁ, মুছে ফেলুন
+          </button>
           <button onClick={onCancel} className="w-full bg-slate-100 text-slate-500 py-4 rounded-2xl font-bold text-sm active:scale-95 transition-all">বাতিল</button>
         </div>
       </div>
@@ -39,23 +47,8 @@ const PostCard = ({ post, onLike, onAddComment, onDeletePost, onDeleteComment, c
   const [commentText, setCommentText] = useState('');
   const [replyTo, setReplyTo] = useState<any>(null);
 
-  useEffect(() => {
-    const viewPost = async () => {
-      if (auth.currentUser && !post.viewedBy?.includes(currentUserId)) {
-        try {
-          await updateDoc(doc(db, 'posts', post.id), {
-            views: increment(1),
-            viewedBy: arrayUnion(currentUserId)
-          });
-        } catch (e) { console.warn(e); }
-      }
-    };
-    viewPost();
-  }, [post.id]);
-
   const isLiked = post.likedBy?.includes(currentUserId);
   const isOwner = post.uid === currentUserId;
-
   const displayName = post.isAnonymous ? 'বেনামী ইউজার' : post.userName;
   const displayAvatar = post.isAnonymous ? "https://api.dicebear.com/7.x/bottts/svg?seed=anon" : (post.userAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.userName}`);
 
@@ -98,7 +91,7 @@ const PostCard = ({ post, onLike, onAddComment, onDeletePost, onDeleteComment, c
       <div className="px-4 py-3 flex justify-between text-gray-500 text-xs border-b mx-2 font-hind font-bold">
         <div className="flex items-center gap-1">
           <div className="bg-blue-600 p-1 rounded-full shadow-sm">
-            <Heart size={10} fill="white" className="text-white" />
+            <ThumbsUp size={10} fill="white" className="text-white" />
           </div>
           <span>{post.likes || 0}</span>
         </div>
@@ -109,7 +102,7 @@ const PostCard = ({ post, onLike, onAddComment, onDeletePost, onDeleteComment, c
 
       <div className="flex px-2 py-1">
         <button onClick={() => onLike(post.id)} className={`flex-1 flex justify-center items-center gap-2 py-2.5 hover:bg-gray-50 rounded-lg font-bold text-xs transition-colors font-hind ${isLiked ? 'text-blue-600' : 'text-gray-500'}`}>
-          <Heart size={18} fill={isLiked ? 'currentColor' : 'none'} /> লাইক
+          <ThumbsUp size={18} fill={isLiked ? 'currentColor' : 'none'} /> লাইক
         </button>
         <button onClick={() => setShowComments(!showComments)} className="flex-1 flex justify-center items-center gap-2 py-2.5 hover:bg-gray-50 rounded-lg text-gray-500 font-bold text-xs font-hind">
           <MessageCircle size={18} /> মতামত
@@ -172,6 +165,7 @@ const CommunityTab: React.FC<{ user?: UserProfile }> = ({ user }) => {
   const [showComposer, setShowComposer] = useState(false);
   const [activeStory, setActiveStory] = useState<any | null>(null);
   const [postContent, setPostContent] = useState('');
+  const [isPosting, setIsPosting] = useState(false); // New state to prevent multiple posts
   const [mediaFile, setMediaFile] = useState<{type: 'image' | 'video', url: string} | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{show: boolean, type: 'post' | 'story' | 'comment' | 'chat_everyone' | 'chat_me', id: any, postId?: string} | null>(null);
   
@@ -182,43 +176,40 @@ const CommunityTab: React.FC<{ user?: UserProfile }> = ({ user }) => {
   const storyInput = useRef<HTMLInputElement>(null);
   const postInput = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    const trackStoryView = async () => {
-      if (!activeStory || !auth.currentUser) return;
-      const currentInList = stories.find(s => s.id === activeStory.id);
-      if (currentInList && !currentInList.viewers?.includes(auth.currentUser.uid)) {
-        try {
-          await updateDoc(doc(db, 'stories', activeStory.id), { viewers: arrayUnion(auth.currentUser.uid) });
-        } catch (e) { console.warn(e); }
-      }
-    };
-    trackStoryView();
-  }, [activeStory?.id]);
-
+  // FETCH POSTS & CHAT (Ensuring real-time for all users)
   useEffect(() => {
     setLoading(true);
     const isAnon = activeTab === 'anonymous';
     
-    const qPosts = query(collection(db, 'posts'), where('isAnonymous', '==', isAnon), limit(40));
+    const qPosts = query(
+      collection(db, 'posts'), 
+      where('isAnonymous', '==', isAnon),
+      limit(50)
+    );
+
     const unsubPosts = onSnapshot(qPosts, (snap) => {
       const docs = snap.docs.map(d => ({ id: d.id, ...d.data() } as Post));
       docs.sort((a, b) => (b.timestamp?.toMillis?.() || 0) - (a.timestamp?.toMillis?.() || 0));
       setPosts(docs);
       setLoading(false);
+    }, (error) => {
+      console.error("Firestore Listen Error:", error);
+      setLoading(false);
     });
     
+    // STORIES
     const dayAgo = Date.now() - (24 * 60 * 60 * 1000);
     const qStories = query(collection(db, 'stories'), where('timestamp_ms', '>', dayAgo));
     const unsubStories = onSnapshot(qStories, (snap) => {
       setStories(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
 
+    // CHAT (Global for everyone)
     let unsubChat: any = null;
     if (activeTab === 'messages') {
       const qChat = query(collection(db, 'global_chat'), orderBy('timestamp', 'desc'), limit(60));
       unsubChat = onSnapshot(qChat, (snap) => {
         const msgs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        // Filter out messages hidden for me
         const visibleMsgs = msgs.filter((m: any) => !m.hiddenFor?.includes(auth.currentUser?.uid));
         setChatMessages(visibleMsgs.reverse());
       });
@@ -256,31 +247,6 @@ const CommunityTab: React.FC<{ user?: UserProfile }> = ({ user }) => {
     await updateDoc(doc(db, 'posts', postId), { comments: arrayUnion(comment) });
   };
 
-  const executeDelete = async () => {
-    if (!confirmDelete) return;
-    const { type, id, postId } = confirmDelete;
-    try {
-      if (type === 'post') await deleteDoc(doc(db, 'posts', id));
-      if (type === 'story') await deleteDoc(doc(db, 'stories', id));
-      if (type === 'comment' && postId) {
-        await updateDoc(doc(db, 'posts', postId), { comments: arrayRemove(id) });
-      }
-      if (type === 'chat_everyone') {
-        await deleteDoc(doc(db, 'global_chat', id));
-      }
-      if (type === 'chat_me') {
-        await updateDoc(doc(db, 'global_chat', id), {
-          hiddenFor: arrayUnion(auth.currentUser?.uid)
-        });
-      }
-    } catch (e) {
-      console.error(e);
-    }
-    setConfirmDelete(null);
-    setActiveStory(null);
-    setSelectedChatMsg(null);
-  };
-
   const handleSendChat = async () => {
     if (!chatInput.trim() || !auth.currentUser) return;
     await addDoc(collection(db, 'global_chat'), {
@@ -293,6 +259,76 @@ const CommunityTab: React.FC<{ user?: UserProfile }> = ({ user }) => {
       timestamp: serverTimestamp()
     });
     setChatInput(''); setChatReplyTo(null);
+  };
+
+  const executeDelete = async () => {
+    if (!confirmDelete) return;
+    const { type, id, postId } = confirmDelete;
+    
+    // Optimistic UI: Close modal immediately
+    setConfirmDelete(null); 
+    setActiveStory(null); 
+    setSelectedChatMsg(null);
+
+    try {
+      if (type === 'post') {
+        setPosts(prev => prev.filter(p => p.id !== id));
+        await deleteDoc(doc(db, 'posts', id));
+      }
+      if (type === 'story') {
+        setStories(prev => prev.filter(s => s.id !== id));
+        await deleteDoc(doc(db, 'stories', id));
+      }
+      if (type === 'comment' && postId) {
+        await updateDoc(doc(db, 'posts', postId), { comments: arrayRemove(id) });
+      }
+      if (type === 'chat_everyone') {
+        setChatMessages(prev => prev.filter(m => m.id !== id));
+        await deleteDoc(doc(db, 'global_chat', id));
+      }
+      if (type === 'chat_me') {
+        setChatMessages(prev => prev.filter(m => m.id !== id));
+        await updateDoc(doc(db, 'global_chat', id), { hiddenFor: arrayUnion(auth.currentUser?.uid) });
+      }
+    } catch (e) { 
+      console.error("Deletion Error:", e);
+      alert("মুছে ফেলতে সমস্যা হয়েছে।");
+    }
+  };
+
+  const handlePublishPost = async () => {
+    if ((!postContent.trim() && !mediaFile) || isPosting) return;
+    
+    setIsPosting(true); // Disable button
+    const isAnon = activeTab === 'anonymous';
+    
+    // Close composer immediately for a fast feel
+    setShowComposer(false);
+    
+    try {
+      await addDoc(collection(db, 'posts'), { 
+        uid: auth.currentUser?.uid, 
+        userName: isAnon ? "বেনামী ইউজার" : (user?.name || "ইউজার"), 
+        userAvatar: isAnon ? "" : (user?.avatarUrl || ""), 
+        content: postContent, 
+        image: mediaFile?.type === 'image' ? mediaFile.url : null, 
+        video: mediaFile?.type === 'video' ? mediaFile.url : null, 
+        isAnonymous: isAnon, 
+        likes: 0, likedBy: [], comments: [], views: 0, viewedBy: [], 
+        timestamp: serverTimestamp(), 
+        time: new Date().toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' }) 
+      });
+      
+      // Cleanup
+      setPostContent(''); 
+      setMediaFile(null);
+      // alert("পোস্ট সফলভাবে পাবলিশ হয়েছে!");
+    } catch (error) {
+      console.error("Post Error:", error);
+      alert("পোস্ট পাবলিশ করতে সমস্যা হয়েছে।");
+    } finally {
+      setIsPosting(false);
+    }
   };
 
   return (
@@ -318,11 +354,11 @@ const CommunityTab: React.FC<{ user?: UserProfile }> = ({ user }) => {
                     <Reply size={20} className="text-blue-600"/> উত্তর দিন (Reply)
                  </button>
                  <button onClick={() => setConfirmDelete({ show: true, type: 'chat_me', id: selectedChatMsg.id })} className="w-full flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl transition-colors text-slate-700 font-bold">
-                    <Eye size={20} className="text-slate-400"/> আমার জন্য ডিলিট করুন (Delete for me)
+                    <Eye size={20} className="text-slate-400"/> আমার জন্য ডিলিট করুন
                  </button>
                  {selectedChatMsg.uid === auth.currentUser?.uid && (
                    <button onClick={() => setConfirmDelete({ show: true, type: 'chat_everyone', id: selectedChatMsg.id })} className="w-full flex items-center gap-4 p-4 hover:bg-rose-50 rounded-2xl transition-colors text-rose-600 font-bold">
-                      <Trash2 size={20}/> সবার জন্য ডিলিট করুন (Delete for Everyone)
+                      <Trash2 size={20}/> সবার জন্য ডিলিট করুন
                    </button>
                  )}
               </div>
@@ -348,7 +384,7 @@ const CommunityTab: React.FC<{ user?: UserProfile }> = ({ user }) => {
            <div className="flex-grow overflow-y-auto p-4 space-y-6 no-scrollbar">
               {chatMessages.map(msg => (
                 <div key={msg.id} className={`flex gap-3 ${msg.uid === auth.currentUser?.uid ? 'flex-row-reverse' : ''}`}>
-                   <img src={msg.userAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${msg.userName}`} className="w-8 h-8 rounded-xl border shadow-sm object-cover" alt=""/>
+                   <img src={msg.userAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${msg.userName}`} className="w-8 h-8 rounded-xl border shadow-sm object-cover shrink-0" alt=""/>
                    <div className={`max-w-[75%] space-y-1 ${msg.uid === auth.currentUser?.uid ? 'items-end' : ''}`}>
                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter mx-1">{msg.userName}</p>
                       <div 
@@ -366,6 +402,7 @@ const CommunityTab: React.FC<{ user?: UserProfile }> = ({ user }) => {
                    </div>
                 </div>
               ))}
+              {chatMessages.length === 0 && <div className="py-20 text-center text-slate-300 font-bold uppercase text-[10px] tracking-widest">এখনো কোনো মেসেজ নেই</div>}
            </div>
            <div className="p-4 bg-white border-t sticky bottom-0 z-10 shadow-2xl">
               {chatReplyTo && (
@@ -425,7 +462,7 @@ const CommunityTab: React.FC<{ user?: UserProfile }> = ({ user }) => {
           {/* COMPOSER BOX */}
           <div className="mx-4 mt-4 p-4 bg-white rounded-xl border border-slate-100 shadow-sm">
             <div className="flex gap-3 items-center mb-4">
-               <img src={activeTab === 'anonymous' ? "https://api.dicebear.com/7.x/bottts/svg?seed=anon" : user?.avatarUrl} className="w-10 h-10 rounded-full border object-cover shadow-sm" alt=""/>
+               <img src={activeTab === 'anonymous' ? "https://api.dicebear.com/7.x/bottts/svg?seed=anon" : user?.avatarUrl} className="w-10 h-10 rounded-full border object-cover shadow-sm shrink-0" alt=""/>
                <button onClick={() => setShowComposer(true)} className="flex-grow text-left py-3 px-5 bg-slate-50 text-slate-400 rounded-full text-xs font-bold">মনে কিছু চলছে?</button>
             </div>
             <div className="flex justify-around border-t pt-3">
@@ -487,25 +524,12 @@ const CommunityTab: React.FC<{ user?: UserProfile }> = ({ user }) => {
               <button onClick={() => { setShowComposer(false); setMediaFile(null); }} className="p-2 text-slate-500"><X size={24}/></button>
               <h3 className="font-black text-lg">পোস্ট করুন</h3>
               <button 
-                onClick={async () => {
-                  if (!postContent.trim() && !mediaFile) return;
-                  const isAnon = activeTab === 'anonymous';
-                  await addDoc(collection(db, 'posts'), { 
-                    uid: auth.currentUser?.uid, 
-                    userName: isAnon ? "বেনামী ইউজার" : (user?.name || "ইউজার"), 
-                    userAvatar: isAnon ? "" : (user?.avatarUrl || ""), 
-                    content: postContent, 
-                    image: mediaFile?.type === 'image' ? mediaFile.url : null, 
-                    video: mediaFile?.type === 'video' ? mediaFile.url : null, 
-                    isAnonymous: isAnon, 
-                    likes: 0, likedBy: [], comments: [], views: 0, viewedBy: [], 
-                    timestamp: serverTimestamp(), 
-                    time: new Date().toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' }) 
-                  });
-                  setPostContent(''); setMediaFile(null); setShowComposer(false);
-                }} 
-                className={`px-8 py-2 rounded-xl font-black text-sm shadow-md ${postContent.trim() || mediaFile ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-300 cursor-not-allowed'}`}
-              >পাবলিশ</button>
+                onClick={handlePublishPost} 
+                disabled={isPosting || (!postContent.trim() && !mediaFile)}
+                className={`px-8 py-2 rounded-xl font-black text-sm shadow-md transition-all ${postContent.trim() || mediaFile ? 'bg-blue-600 text-white active:scale-95' : 'bg-gray-100 text-gray-300 cursor-not-allowed'}`}
+              >
+                {isPosting ? <Loader2 className="animate-spin" size={18} /> : 'পাবলিশ'}
+              </button>
            </div>
            <div className="p-6 flex-grow overflow-y-auto">
               <textarea value={postContent} onChange={(e)=>setPostContent(e.target.value)} placeholder={activeTab === 'anonymous' ? "পরিচয় গোপন রেখে কিছু বলুন..." : "আপনার মনের না বলা কথা..."} className="w-full text-xl outline-none resize-none min-h-[200px] font-hind" autoFocus />
