@@ -154,6 +154,8 @@ const HomeTab: React.FC<HomeTabProps> = ({
         <StatItem icon={<Flame className="text-orange-500" size={18}/>} value={user.streak?.toString() || "0"} label="স্ট্রিক" />
       </div>
 
+      <AdBanner/>
+
       {adminNotices.length > 0 && (
         <div className="px-1">
           <h4 className="font-black text-gray-900 text-xl flex items-center gap-2 mb-4">
