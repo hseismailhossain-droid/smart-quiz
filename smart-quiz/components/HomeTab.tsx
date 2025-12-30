@@ -1,25 +1,28 @@
 
 import { Bell, BookOpen, Trophy, Flame, Star, LogOut, Edit3, Share2, Wallet, PlusCircle, ArrowUpRight, X, BarChart3, Users, CheckCircle2 } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
-import { Notification, UserProfile, Poll, AdminNotice, QuizResult, Question, AdPlacement } from '../types';
+import { Notification, UserProfile, Poll, AdminNotice, QuizResult, Question, AdPlacement, Lesson } from '../types';
 import { db, auth } from '../services/firebase';
 import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, arrayUnion, getDocs, increment } from 'firebase/firestore';
 import AdRenderer from './AdRenderer';
 
+// Fixed HomeTabProps to include lessons and onLessonSelect
 interface HomeTabProps {
   user: UserProfile;
   history: any;
   notifications: Notification[];
+  lessons: Lesson[];
   onShowNotifications: () => void;
   onLogout: () => void;
   onSubjectSelect: (subject: string, isLive?: boolean, isPaid?: boolean, fee?: number, quizId?: string, collectionName?: string) => void;
+  onLessonSelect: (lesson: Lesson) => void;
   onEditProfile: (view?: any) => void;
   onSubmitDeposit: (amount: number, method: any, trxId: string) => void;
   onSubmitWithdraw: (amount: number, method: any, accountNumber: string) => void;
 }
 
 const HomeTab: React.FC<HomeTabProps> = ({ 
-  user, history, notifications, onShowNotifications, onLogout, onSubjectSelect, onEditProfile, onSubmitDeposit, onSubmitWithdraw 
+  user, history, notifications, lessons, onShowNotifications, onLogout, onSubjectSelect, onLessonSelect, onEditProfile, onSubmitDeposit, onSubmitWithdraw 
 }) => {
   const [specialQuizzes, setSpecialQuizzes] = useState<any[]>([]);
   const [adminNotices, setAdminNotices] = useState<AdminNotice[]>([]);
@@ -111,8 +114,8 @@ const HomeTab: React.FC<HomeTabProps> = ({
                </div>
             </div>
             <div className="flex gap-2">
-               <button onClick={() => onEditProfile('report')} className="flex-1 py-3 bg-white text-emerald-900 rounded-2xl font-black text-xs uppercase shadow-lg active:scale-95 transition-all">রিচার্জ</button>
-               <button onClick={() => onEditProfile('report')} className="flex-1 py-3 bg-white/10 text-white rounded-2xl font-black text-xs uppercase border border-white/20 active:scale-95 transition-all">উত্তোলন</button>
+               <button onClick={() => onEditProfile('wallet')} className="flex-1 py-3 bg-white text-emerald-900 rounded-2xl font-black text-xs uppercase shadow-lg active:scale-95 transition-all">রিচার্জ</button>
+               <button onClick={() => onEditProfile('wallet')} className="flex-1 py-3 bg-white/10 text-white rounded-2xl font-black text-xs uppercase border border-white/20 active:scale-95 transition-all">উত্তোলন</button>
             </div>
          </div>
       </div>
@@ -185,9 +188,6 @@ const HomeTab: React.FC<HomeTabProps> = ({
         </div>
       )}
 
-      {/* Dynamic Ad: Home Middle */}
-      <AdRenderer placement={ads['home_middle']} />
-
       {/* Special Quiz Section */}
       <div className="px-1">
         <h4 className="font-black text-gray-900 text-xl flex items-center gap-2 mb-6">
@@ -203,6 +203,32 @@ const HomeTab: React.FC<HomeTabProps> = ({
           ))}
         </div>
       </div>
+
+      {/* Lessons Section */}
+      {lessons && lessons.length > 0 && (
+        <div className="px-1">
+          <h4 className="font-black text-gray-900 text-xl flex items-center gap-2 mb-6">
+            <BookOpen size={24} className="text-blue-600" /> সাম্প্রতিক লিসন
+          </h4>
+          <div className="grid grid-cols-1 gap-4">
+            {lessons.map(lesson => (
+              <button 
+                key={lesson.id} 
+                onClick={() => onLessonSelect(lesson)}
+                className="w-full bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex items-center gap-4 text-left group hover:border-blue-200 transition-all"
+              >
+                <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center shrink-0">
+                  <BookOpen size={24} />
+                </div>
+                <div>
+                  <h5 className="font-black text-slate-800 text-sm line-clamp-1">{lesson.title}</h5>
+                  <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mt-0.5">{lesson.category}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Dynamic Ad: Home Bottom */}
       <AdRenderer placement={ads['home_bottom']} />
