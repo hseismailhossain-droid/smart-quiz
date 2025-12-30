@@ -1,71 +1,111 @@
 
-import React, { useEffect, useRef } from 'react';
-import { AdPlacement } from '../types';
+import React, { useEffect, useState, useRef } from 'react';
+import { db } from '../services/firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { AdUnit } from '../types';
 
 interface AdRendererProps {
-  placement: AdPlacement | null | undefined;
+  placementId: string;
   className?: string;
 }
 
-const AdRenderer: React.FC<AdRendererProps> = ({ placement, className = "" }) => {
+const AdRenderer: React.FC<AdRendererProps> = ({ placementId, className = "" }) => {
+  const [ads, setAds] = useState<AdUnit[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Query by placementId
+    const q = query(
+      collection(db, 'ad_units'), 
+      where('placementId', '==', placementId)
+    );
+
+    const unsub = onSnapshot(q, (snap) => {
+      const allAds = snap.docs.map(d => ({ id: d.id, ...d.data() } as AdUnit));
+      
+      // Perform filtering and sorting on the client side
+      const filteredSorted = allAds
+        .filter(ad => ad.active)
+        .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+      setAds(filteredSorted);
+      setLoading(false);
+    }, (err) => {
+      console.error("Ad Load Error:", err);
+      setLoading(false);
+    });
+
+    return unsub;
+  });
+
+  if (loading || ads.length === 0) return null;
+
+  return (
+    <div className={`flex flex-col gap-6 my-6 w-full ${className}`}>
+      {ads.map(ad => (
+        <AdItem key={ad.id} ad={ad} />
+      ))}
+    </div>
+  );
+};
+
+const AdItem: React.FC<{ ad: AdUnit }> = ({ ad }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!placement || !placement.active || placement.network === 'none') return;
-
-    // Script injection for AdSense / Adsterra
-    if ((placement.adType === 'script' || placement.network === 'adsterra') && containerRef.current) {
+    if (ad.adType === 'script' && containerRef.current) {
       containerRef.current.innerHTML = "";
-      const scriptContent = placement.content;
-      
-      // Creating a range to execute scripts
-      const range = document.createRange();
-      const documentFragment = range.createContextualFragment(scriptContent);
-      containerRef.current.appendChild(documentFragment);
+      try {
+        const range = document.createRange();
+        const documentFragment = range.createContextualFragment(ad.content);
+        containerRef.current.appendChild(documentFragment);
+        
+        const scripts = containerRef.current.querySelectorAll("script");
+        scripts.forEach(oldScript => {
+          const newScript = document.createElement("script");
+          Array.from(oldScript.attributes).forEach((attr: Attr) => newScript.setAttribute(attr.name, attr.value));
+          newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+          oldScript.parentNode?.replaceChild(newScript, oldScript);
+        });
+      } catch (err) { console.error(err); }
     }
 
-    // AdMob manually handled via slot ID if needed (for specific layout)
-    if (placement.network === 'admob' && placement.adType === 'id') {
+    if (ad.adType === 'id' && (ad.network === 'adsense' || ad.network === 'admob')) {
       try {
         // @ts-ignore
         (window.adsbygoogle = window.adsbygoogle || []).push({});
       } catch (e) {}
     }
-  }, [placement]);
-
-  if (!placement || !placement.active || placement.network === 'none') return null;
+  }, [ad]);
 
   return (
-    <div className={`my-4 flex justify-center items-center w-full min-h-[50px] overflow-hidden ${className}`}>
-      {placement.adType === 'image' ? (
-        <a href={placement.link || "#"} target="_blank" rel="noreferrer" className="w-full">
+    <div className="w-full flex justify-center items-center overflow-hidden animate-in fade-in duration-500">
+      {ad.adType === 'image' ? (
+        <a href={ad.link || "#"} target="_blank" rel="noreferrer" className="w-full group">
           <img 
-            src={placement.content} 
-            alt="Advertisement" 
-            className="w-full h-auto rounded-2xl shadow-sm border border-slate-100 object-cover" 
+            src={ad.content} 
+            alt="Ad" 
+            className="w-full h-auto rounded-[28px] shadow-sm border border-slate-100 object-cover group-hover:scale-[1.01] transition-transform duration-500" 
           />
         </a>
-      ) : placement.adType === 'video' ? (
-        <div className="w-full rounded-2xl overflow-hidden shadow-sm border border-slate-100 bg-black aspect-video relative">
-           {placement.content.includes('youtube.com') || placement.content.includes('youtu.be') ? (
+      ) : ad.adType === 'video' ? (
+        <div className="w-full rounded-[28px] overflow-hidden shadow-sm border border-slate-100 bg-black aspect-video relative">
+           {ad.content.includes('youtube.com') || ad.content.includes('youtu.be') ? (
              <iframe 
                className="w-full h-full" 
-               src={`https://www.youtube.com/embed/${placement.content.includes('v=') ? placement.content.split('v=')[1]?.split('&')[0] : placement.content.split('/').pop()}`} 
+               src={`https://www.youtube.com/embed/${ad.content.includes('v=') ? ad.content.split('v=')[1]?.split('&')[0] : ad.content.split('/').pop()}`} 
                frameBorder="0" 
                allowFullScreen
              ></iframe>
            ) : (
-             <video src={placement.content} controls className="w-full h-full object-contain" />
-           )}
-           {placement.link && (
-             <a href={placement.link} target="_blank" rel="noreferrer" className="absolute bottom-3 right-3 bg-white/90 backdrop-blur px-4 py-2 rounded-xl text-[10px] font-black text-slate-900 uppercase shadow-lg">বিস্তারিত দেখুন</a>
+             <video src={ad.content} controls className="w-full h-full object-contain" />
            )}
         </div>
-      ) : placement.adType === 'id' ? (
+      ) : ad.adType === 'id' ? (
         <ins className="adsbygoogle"
-             style={{ display: 'block' }}
+             style={{ display: 'block', width: '100%' }}
              data-ad-client="ca-pub-3064118239935067"
-             data-ad-slot={placement.content}
+             data-ad-slot={ad.content}
              data-ad-format="auto"
              data-full-width-responsive="true"></ins>
       ) : (
