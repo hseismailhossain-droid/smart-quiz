@@ -14,6 +14,7 @@ import {
   deleteDoc, doc, updateDoc, arrayUnion, where, limit, 
   increment, arrayRemove, orderBy, getDoc
 } from 'firebase/firestore';
+import { ADMIN_EMAIL } from '../constants';
 
 // --- Memoized PostCard for fast list rendering ---
 const PostCard = memo(({ post, onLike, onAddComment, onDeletePost, onDeleteComment, onShare, currentUserId }: any) => {
@@ -22,7 +23,7 @@ const PostCard = memo(({ post, onLike, onAddComment, onDeletePost, onDeleteComme
   const [replyTo, setReplyTo] = useState<any>(null);
 
   const isLiked = post.likedBy?.includes(currentUserId);
-  const isOwner = post.uid === currentUserId;
+  const isOwner = post.uid === currentUserId || auth.currentUser?.email === ADMIN_EMAIL;
   const displayName = post.isAnonymous ? 'বেনামী ইউজার' : post.userName;
   const displayAvatar = post.isAnonymous ? "https://api.dicebear.com/7.x/bottts/svg?seed=anon" : (post.userAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.userName}`);
 
@@ -403,13 +404,14 @@ const CommunityTab: React.FC<{ user?: UserProfile }> = ({ user }) => {
                  </div>
               </div>
               <div className="flex items-center gap-3">
-                {activeStory.uid === auth.currentUser?.uid && (
+                {/* Delete Button for Owner or Admin */}
+                {(activeStory.uid === auth.currentUser?.uid || auth.currentUser?.email === ADMIN_EMAIL) && (
                   <button 
                     onClick={() => setConfirmDelete({ show: true, type: 'story', id: activeStory.id })}
-                    className="p-3.5 bg-rose-600/90 text-white rounded-2xl backdrop-blur-md active:scale-90 transition-all shadow-xl hover:bg-rose-700"
+                    className="p-4 bg-rose-600 text-white rounded-full active:scale-90 transition-all shadow-xl hover:bg-rose-700 flex items-center justify-center ring-4 ring-rose-600/20"
                     aria-label="Delete Story"
                   >
-                    <Trash2 size={20}/>
+                    <Trash2 size={24}/>
                   </button>
                 )}
                 <button onClick={() => setActiveStory(null)} className="p-3.5 bg-white/20 text-white rounded-2xl backdrop-blur-md active:scale-90 transition-all hover:bg-white/30">
