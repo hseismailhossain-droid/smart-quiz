@@ -36,6 +36,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onUp
   const [method, setMethod] = useState<'bkash' | 'nagad'>('bkash');
   const [trxId, setTrxId] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
+  const [paymentNumbers, setPaymentNumbers] = useState<any>(null);
 
   const compressAndSetImage = (file: File) => {
     const MAX_SIZE = 1 * 1024 * 1024;
@@ -48,6 +49,16 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onUp
     reader.onload = (e) => setSelectedAvatar(e.target?.result as string);
     reader.readAsDataURL(file);
   };
+
+  useEffect(() => {
+    const fetchAdminNumbers = async () => {
+      try {
+        const snap = await getDoc(doc(db, 'settings', 'payment_numbers'));
+        if (snap.exists()) setPaymentNumbers(snap.data());
+      } catch (e) { console.error("Error fetching payment numbers:", e); }
+    };
+    fetchAdminNumbers();
+  }, []);
 
   const handleSave = async () => {
     if (!name.trim()) return;
@@ -96,6 +107,8 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onUp
     } finally { setIsSendingRequest(false); }
   };
 
+  const activeAdminNumber = paymentNumbers?.[method]?.number || 'লোড হচ্ছে...';
+ 
   const handleSubmitReport = async () => {
     if (!reportMsg.trim()) return;
     setIsSendingRequest(true);
