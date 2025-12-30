@@ -1,76 +1,96 @@
 
 import React, { useState, useEffect } from 'react';
-// Added missing ChevronRight import
-import { LayoutGrid, Save, Loader2, Power, Code, Hash, Image as ImageIcon, ExternalLink, Trash2, Video, MonitorPlay, Link as LinkIcon, Info, Settings, ChevronRight } from 'lucide-react';
+import { 
+  LayoutGrid, Save, Loader2, Power, Code, Hash, 
+  ImageIcon, ExternalLink, Trash2, Video, 
+  MonitorPlay, Link as LinkIcon, Info, Settings, 
+  ChevronRight, Eye, PlayCircle, Sparkles, AlertCircle, Plus, List, ArrowDownNarrowWide, CheckCircle2, XCircle
+} from 'lucide-react';
 import { db } from '../../services/firebase';
-import { collection, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
-import { AdPlacement } from '../../types';
+import { collection, onSnapshot, doc, updateDoc, deleteDoc, query, serverTimestamp, addDoc } from 'firebase/firestore';
+import { AdUnit } from '../../types';
+import ConfirmModal from './ConfirmModal';
 
-const PLACEMENTS = [
+const PLACEMENT_OPTIONS = [
   { id: 'home_top', label: 'হোম পেজ (উপরে)' },
   { id: 'home_middle', label: 'হোম পেজ (মাঝখানে)' },
   { id: 'home_bottom', label: 'হোম পেজ (নিচে)' },
-  { id: 'quiz_start', label: 'কুইজ স্ক্রিন (উপরে)' },
-  { id: 'quiz_question_bottom', label: 'কুইজ প্রশ্ন (নিচে)' },
-  { id: 'quiz_end', label: 'ফলাফল পেজ (বিজয়ীর উপরে)' },
-  { id: 'feed_top', label: 'কমিউনিটি ফিড (শুরুতে)' },
-  { id: 'feed_between_posts', label: 'ফিড (প্রতি ৫ পোস্ট অন্তর)' },
-  { id: 'history_top', label: 'হিস্ট্রি পেজ (উপরে)' }
+  { id: 'quiz_start', label: 'কুইজ শুরুর আগে' },
+  { id: 'quiz_question_bottom', label: 'প্রশ্নের নিচে' },
+  { id: 'quiz_end', label: 'ফলাফল পেজ' },
+  { id: 'feed_top', label: 'ফিড (টপ)' },
+  { id: 'feed_middle', label: 'ফিড (মাঝখানে)' },
+  { id: 'feed_middle', label: 'ফিড (তিন টা পোস্টের নিছে)' },
+  { id: 'history_top', label: 'হিস্ট্রি পেজ' }
 ];
 
 const AdsManager: React.FC = () => {
-  const [configs, setConfigs] = useState<Record<string, AdPlacement>>({});
+  const [ads, setAds] = useState<AdUnit[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedPid, setSelectedPid] = useState(PLACEMENTS[0].id);
+  const [view, setView] = useState<'list' | 'create' | 'edit'>('list');
+  const [editingAd, setEditingAd] = useState<Partial<AdUnit> | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{show: boolean, id: string, label: string}>({
+    show: false, id: '', label: ''
+  });
 
   // Form State
-  const [network, setNetwork] = useState<any>('custom');
-  const [adType, setAdType] = useState<any>('image');
-  const [content, setContent] = useState('');
-  const [link, setLink] = useState('');
-  const [active, setActive] = useState(true);
+  const [formData, setFormData] = useState<Partial<AdUnit>>({
+    label: '',
+    placementId: 'home_middle',
+    network: 'custom',
+    adType: 'image',
+    content: '',
+    link: '',
+    active: true,
+    order: 1
+  });
 
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'ad_placements'), (snap) => {
-      const data: any = {};
-      snap.docs.forEach(d => data[d.id] = d.data());
-      setConfigs(data);
+    const q = query(collection(db, 'ad_units'));
+    const unsub = onSnapshot(q, (snap) => {
+      const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as AdUnit));
+      data.sort((a, b) => {
+        const pCompare = (a.placementId || '').localeCompare(b.placementId || '');
+        if (pCompare !== 0) return pCompare;
+        return (a.order || 0) - (b.order || 0);
+      });
+      setAds(data);
       setLoading(false);
-      
-      const current = data[selectedPid];
-      if (current) {
-        setNetwork(current.network);
-        setAdType(current.adType);
-        setContent(current.content);
-        setLink(current.link || "");
-        setActive(current.active);
-      } else {
-        // Reset if no config found for this slot
-        setNetwork('custom');
-        setAdType('image');
-        setContent('');
-        setLink('');
-        setActive(true);
-      }
     });
     return unsub;
-  }, [selectedPid]);
+  }, []);
+
+  const handleToggleStatus = async (adId: string, currentStatus: boolean) => {
+    try {
+      await updateDoc(doc(db, 'ad_units', adId), { active: !currentStatus });
+    } catch (e) {
+      alert("স্টেটাস পরিবর্তন করা যায়নি।");
+    }
+  };
 
   const handleSave = async () => {
-    if (!content.trim() && active) return alert("বিজ্ঞাপনের কন্টেন্ট বা কোড দিন।");
+    if (!formData.label?.trim() || !formData.content?.trim()) return alert("সব তথ্য সঠিকভাবে পূরণ করুন।");
     setIsSaving(true);
     try {
-      await setDoc(doc(db, 'ad_placements', selectedPid), {
-        id: selectedPid,
-        network,
-        adType,
-        content: content.trim(),
-        link: link.trim(),
-        active,
+      const finalData = {
+        ...formData,
+        order: Number(formData.order) || 0,
         updatedAt: Date.now()
-      });
-      alert("বিজ্ঞাপন সেটিংস সফলভাবে সেভ হয়েছে!");
+      };
+
+      if (view === 'edit' && editingAd?.id) {
+        await updateDoc(doc(db, 'ad_units', editingAd.id), finalData);
+        alert("বিজ্ঞাপন আপডেট হয়েছে!");
+      } else {
+        await addDoc(collection(db, 'ad_units'), {
+          ...finalData,
+          timestamp: serverTimestamp()
+        });
+        alert("নতুন বিজ্ঞাপন যোগ হয়েছে!");
+      }
+      setView('list');
+      resetForm();
     } catch (e) {
       alert("সেভ করতে সমস্যা হয়েছে।");
     } finally {
@@ -78,133 +98,233 @@ const AdsManager: React.FC = () => {
     }
   };
 
+  const resetForm = () => {
+    setFormData({
+      label: '',
+      placementId: 'home_middle',
+      network: 'custom',
+      adType: 'image',
+      content: '',
+      link: '',
+      active: true,
+      order: 1
+    });
+    setEditingAd(null);
+  };
+
+  const handleDelete = async () => {
+    try {
+      await deleteDoc(doc(db, 'ad_units', deleteConfirm.id));
+      setDeleteConfirm({ show: false, id: '', label: '' });
+    } catch (e) { alert("ডিলিট ব্যর্থ হয়েছে।"); }
+  };
+
+  const startEdit = (ad: AdUnit) => {
+    setEditingAd(ad);
+    setFormData(ad);
+    setView('edit');
+  };
+
+  if (loading) return <div className="p-20 text-center"><Loader2 className="animate-spin mx-auto text-emerald-700" /></div>;
+
   return (
-    <div className="space-y-10 pb-20 font-['Hind_Siliguri'] max-w-6xl mx-auto">
-      <div className="px-2">
-        <h2 className="text-4xl font-black text-slate-900 leading-tight">Elite Ad Manager 🚀</h2>
-        <p className="text-slate-400 font-bold text-sm">AdSense, Adsterra বা নিজের পছন্দের বিজ্ঞাপন যেখানে খুশি সেট করুন</p>
+    <div className="space-y-10 pb-20 font-['Hind_Siliguri'] max-w-6xl mx-auto px-4">
+      <ConfirmModal 
+        show={deleteConfirm.show}
+        title="বিজ্ঞাপন ডিলিট"
+        message={`আপনি কি নিশ্চিতভাবে "${deleteConfirm.label}" বিজ্ঞাপনটি মুছে ফেলতে চান?`}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteConfirm({ show: false, id: '', label: '' })}
+      />
+
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div>
+          <div className="flex items-center gap-3 mb-2">
+            <h2 className="text-4xl font-black text-slate-900 leading-tight">Elite Ad Manager Pro</h2>
+            <div className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter">PREMIUM CONTROL</div>
+          </div>
+          <p className="text-slate-400 font-bold text-sm italic">সরাসরি এখান থেকে বিজ্ঞাপন অ্যাক্টিভ বা ডিঅ্যাক্টিভ করুন</p>
+        </div>
+        
+        {view === 'list' ? (
+          <button 
+            onClick={() => { resetForm(); setView('create'); }}
+            className="flex items-center gap-2 bg-emerald-700 text-white px-8 py-4 rounded-2xl font-black text-sm shadow-xl shadow-emerald-700/20 active:scale-95 transition-all"
+          >
+            <Plus size={20} /> নতুন বিজ্ঞাপন
+          </button>
+        ) : (
+          <button 
+            onClick={() => setView('list')}
+            className="flex items-center gap-2 bg-slate-100 text-slate-600 px-8 py-4 rounded-2xl font-black text-sm active:scale-95 transition-all"
+          >
+            <List size={20} /> লিস্টে ফিরে যান
+          </button>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Placement Selection */}
-        <div className="space-y-3 px-2">
-          <h3 className="text-[10px] font-black text-slate-400 uppercase px-4 tracking-[0.2em] mb-4">প্লেসমেন্ট সিলেক্ট করুন</h3>
-          <div className="space-y-2 max-h-[600px] overflow-y-auto no-scrollbar pr-1">
-            {PLACEMENTS.map(p => (
-              <button 
-                key={p.id}
-                onClick={() => setSelectedPid(p.id)}
-                className={`w-full p-6 rounded-[32px] text-left font-black border-2 transition-all flex items-center justify-between group ${selectedPid === p.id ? 'border-emerald-700 bg-emerald-50 text-emerald-900 shadow-xl shadow-emerald-700/5' : 'border-slate-50 bg-white text-slate-400 hover:border-slate-200'}`}
-              >
-                <div className="flex items-center gap-4">
-                   <div className={`w-3 h-3 rounded-full ${configs[p.id]?.active ? 'bg-emerald-500 animate-pulse' : 'bg-slate-200'}`}></div>
-                   <span className="text-sm">{p.label}</span>
+      {view === 'list' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-500">
+           {ads.map(ad => (
+             <div key={ad.id} className={`bg-white p-6 rounded-[40px] border-2 transition-all group relative overflow-hidden ${ad.active ? 'border-emerald-100 shadow-emerald-100/50 shadow-xl' : 'border-slate-100 grayscale-[0.5] opacity-80 shadow-sm'}`}>
+                {ad.active && (
+                   <div className="absolute top-4 right-4 flex items-center gap-1.5">
+                      <span className="flex h-2 w-2 relative">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                      </span>
+                      <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Live Now</span>
+                   </div>
+                )}
+                
+                <div className="flex justify-between items-start mb-6">
+                   <div className={`p-3 rounded-2xl flex items-center gap-2 ${ad.active ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'}`}>
+                      {ad.adType === 'image' ? <ImageIcon size={20}/> : ad.adType === 'video' ? <Video size={20}/> : <Code size={20}/>}
+                   </div>
+                   <div className="flex gap-1.5">
+                      <button 
+                        onClick={() => handleToggleStatus(ad.id, ad.active)}
+                        className={`p-2.5 rounded-xl transition-all shadow-sm active:scale-90 ${ad.active ? 'bg-rose-50 text-rose-500 hover:bg-rose-100' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}`}
+                        title={ad.active ? 'বন্ধ করুন' : 'চালু করুন'}
+                      >
+                         <Power size={16}/>
+                      </button>
+                      <button onClick={() => startEdit(ad)} className="p-2.5 bg-slate-50 text-slate-400 hover:text-emerald-700 rounded-xl transition-colors"><Settings size={16}/></button>
+                      <button onClick={() => setDeleteConfirm({show: true, id: ad.id, label: ad.label})} className="p-2.5 bg-rose-50 text-rose-400 hover:text-rose-600 rounded-xl transition-colors"><Trash2 size={16}/></button>
+                   </div>
                 </div>
-                <ChevronRight size={16} className={`transition-all ${selectedPid === p.id ? 'translate-x-1 text-emerald-700' : 'opacity-20'}`} />
-              </button>
-            ))}
-          </div>
+
+                <div className="space-y-1 mb-4">
+                  <h4 className="font-black text-slate-800 text-lg leading-tight truncate pr-16">{ad.label}</h4>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">স্লট: {PLACEMENT_OPTIONS.find(p=>p.id === ad.placementId)?.label || ad.placementId}</p>
+                </div>
+
+                <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-wider border-t pt-4">
+                   <div className="flex items-center gap-2">
+                      <span className={`px-2 py-1 rounded-md ${ad.active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'}`}>
+                        {ad.network}
+                      </span>
+                      <span className="text-slate-300">Order: {ad.order}</span>
+                   </div>
+                   <div className={`flex items-center gap-1 ${ad.active ? 'text-emerald-600' : 'text-slate-400'}`}>
+                      {ad.active ? <CheckCircle2 size={12}/> : <XCircle size={12}/>}
+                      {ad.active ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
+                   </div>
+                </div>
+             </div>
+           ))}
+           {ads.length === 0 && (
+             <div className="col-span-full py-32 text-center bg-white rounded-[50px] border-2 border-dashed border-slate-100">
+                <AlertCircle size={48} className="mx-auto text-slate-200 mb-4" />
+                <p className="text-slate-300 font-black uppercase text-xs">কোনো বিজ্ঞাপন পাওয়া যায়নি</p>
+             </div>
+           )}
         </div>
-
-        {/* Configuration Editor */}
-        <div className="lg:col-span-2 px-2">
-          <div className="bg-white p-8 md:p-12 rounded-[60px] shadow-sm border border-slate-100 space-y-10 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-slate-50 rounded-bl-[120px] -mr-16 -mt-16 opacity-30"></div>
-            
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative z-10 border-b pb-8 border-slate-50">
-               <div>
-                  <h3 className="text-2xl font-black text-slate-900">{PLACEMENTS.find(p => p.id === selectedPid)?.label}</h3>
-                  <p className="text-xs text-slate-400 font-bold mt-1">এই নির্দিষ্ট স্লটের জন্য সেটিংস পরিবর্তন করুন</p>
-               </div>
-               <button 
-                onClick={() => setActive(!active)}
-                className={`flex items-center gap-3 px-8 py-4 rounded-[22px] font-black text-[11px] uppercase transition-all shadow-sm ${active ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-50 text-rose-500'}`}
-               >
-                 <Power size={14} strokeWidth={3}/> {active ? 'সক্রিয় (Active)' : 'নিষ্ক্রিয় (Disabled)'}
-               </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10">
-              <div className="space-y-3">
-                <label className="text-[10px] font-black text-slate-400 uppercase px-2 tracking-[0.2em]">অ্যাড নেটওয়ার্ক</label>
+      ) : (
+        <div className="bg-white p-8 md:p-12 rounded-[50px] shadow-sm border border-slate-100 space-y-10 animate-in slide-in-from-bottom-8">
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase px-2 tracking-widest">বিজ্ঞাপনের নাম (চেনার জন্য)</label>
+                <input 
+                  type="text" value={formData.label} 
+                  onChange={e => setFormData({...formData, label: e.target.value})} 
+                  placeholder="যেমন: হোম পেজ ব্যানার ২"
+                  className="w-full p-5 bg-slate-50 rounded-2xl font-black outline-none border border-slate-100 focus:bg-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase px-2 tracking-widest">কোথায় দেখাবে (Placement)</label>
                 <select 
-                  value={network} 
-                  onChange={(e) => setNetwork(e.target.value)} 
-                  className="w-full p-6 rounded-[28px] font-black border-2 border-slate-50 bg-slate-50 outline-none focus:bg-white focus:border-emerald-100 transition-all appearance-none shadow-inner text-slate-800"
+                  value={formData.placementId} 
+                  onChange={e => setFormData({...formData, placementId: e.target.value})}
+                  className="w-full p-5 bg-slate-50 rounded-2xl font-black outline-none border border-slate-100"
                 >
-                  <option value="custom">নিজের বিজ্ঞাপন (Image/Video)</option>
-                  <option value="adsense">Google AdSense</option>
-                  <option value="admob">Google AdMob (IDs Only)</option>
-                  <option value="adsterra">Adsterra / Others</option>
-                  <option value="none">কোনো অ্যাড নেই</option>
+                  {PLACEMENT_OPTIONS.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
                 </select>
               </div>
 
-              <div className="space-y-3">
-                <label className="text-[10px] font-black text-slate-400 uppercase px-2 tracking-[0.2em]">বিজ্ঞাপন ধরন (Type)</label>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase px-2 tracking-widest">বিজ্ঞাপনের ক্রম (Order)</label>
+                <div className="flex items-center gap-3 bg-slate-50 p-1 rounded-2xl border border-slate-100 focus-within:bg-white transition-all">
+                   <div className="p-4 bg-white rounded-xl shadow-sm text-slate-400"><ArrowDownNarrowWide size={20}/></div>
+                   <input 
+                    type="number" value={formData.order} 
+                    onChange={e => setFormData({...formData, order: parseInt(e.target.value)})} 
+                    className="flex-grow bg-transparent p-4 font-black outline-none"
+                    placeholder="1, 2, 3..."
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase px-2 tracking-widest">অ্যাড নেটওয়ার্ক</label>
                 <select 
-                  value={adType} 
-                  onChange={(e) => setAdType(e.target.value)} 
-                  className="w-full p-6 rounded-[28px] font-black border-2 border-slate-50 bg-slate-50 outline-none focus:bg-white focus:border-emerald-100 transition-all appearance-none shadow-inner text-slate-800"
+                  value={formData.network} 
+                  onChange={e => setFormData({...formData, network: e.target.value as any})}
+                  className="w-full p-5 bg-slate-50 rounded-2xl font-black outline-none border border-slate-100"
                 >
-                  <option value="image">ব্যানার ছবি (Link)</option>
-                  <option value="video">ভিডিও (MP4/Youtube)</option>
-                  <option value="script">HTML/JS কোড (Script)</option>
+                  <option value="custom">নিজের বিজ্ঞাপন (Banner)</option>
+                  <option value="adsense">Google AdSense</option>
+                  <option value="admob">Google AdMob</option>
+                  <option value="adsterra">Adsterra</option>
+                </select>
+              </div>
+           </div>
+
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase px-2 tracking-widest">ধরন</label>
+                <select 
+                  value={formData.adType} 
+                  onChange={e => setFormData({...formData, adType: e.target.value as any})}
+                  className="w-full p-5 bg-slate-50 rounded-2xl font-black outline-none border border-slate-100"
+                >
+                  <option value="image">ছবি (URL)</option>
+                  <option value="video">ভিডিও (Youtube/MP4)</option>
+                  <option value="script">কোড (HTML Script)</option>
                   <option value="id">স্লট আইডি (Slot ID)</option>
                 </select>
               </div>
-            </div>
 
-            <div className="space-y-4 relative z-10 animate-in fade-in duration-300">
-              <div className="flex items-center gap-2 px-2">
-                 <Settings size={14} className="text-emerald-700" />
-                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  {adType === 'script' ? 'স্ক্রিপ্ট কোড পেস্ট করুন' : adType === 'id' ? 'Slot/Unit ID দিন' : 'মিডিয়া লিঙ্ক (URL)'}
-                 </label>
+              <div className="flex items-end pb-2">
+                 <button 
+                  onClick={() => setFormData({...formData, active: !formData.active})}
+                  className={`flex-1 py-5 rounded-2xl font-black text-xs uppercase transition-all flex items-center justify-center gap-2 ${formData.active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'}`}
+                 >
+                   <Power size={14}/> {formData.active ? 'সক্রিয় (Active)' : 'নিষ্ক্রিয় (Off)'}
+                 </button>
               </div>
+           </div>
+
+           <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase px-2 tracking-widest">কন্টেন্ট বা কোড</label>
               <textarea 
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder={adType === 'script' ? '<script src="..."></script>' : adType === 'id' ? '1234567890' : 'https://image-url-here.jpg'}
-                className="w-full h-48 bg-slate-50 p-8 rounded-[44px] font-mono text-sm border-2 border-slate-50 outline-none focus:bg-white focus:border-emerald-100 transition-all resize-none shadow-inner text-slate-700"
+                value={formData.content} 
+                onChange={e => setFormData({...formData, content: e.target.value})}
+                placeholder={formData.adType === 'script' ? '<script>...</script>' : 'https://...'}
+                className="w-full h-40 bg-slate-50 p-6 rounded-[32px] font-mono text-xs border border-slate-100 outline-none focus:bg-white transition-all shadow-inner"
               />
-            </div>
+           </div>
 
-            {(adType === 'image' || adType === 'video') && (
-              <div className="space-y-4 relative z-10 animate-in slide-in-from-top-4">
-                <div className="flex items-center gap-2 px-2">
-                   <LinkIcon size={14} className="text-slate-400" />
-                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">টার্গেট লিঙ্ক (ক্লিক করলে যেখানে যাবে)</label>
-                </div>
-                <input 
-                  type="text" 
-                  value={link} 
-                  onChange={(e) => setLink(e.target.value)} 
-                  placeholder="https://example.com" 
-                  className="w-full p-6 rounded-[28px] border-2 border-slate-50 bg-slate-50 font-black outline-none focus:bg-white focus:border-emerald-100 transition-all shadow-inner text-slate-800" 
-                />
-              </div>
-            )}
+           <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase px-2 tracking-widest">টার্গেট লিঙ্ক (ঐচ্ছিক)</label>
+              <input 
+                type="text" value={formData.link} 
+                onChange={e => setFormData({...formData, link: e.target.value})} 
+                placeholder="https://example.com"
+                className="w-full p-5 bg-slate-50 rounded-2xl font-black outline-none border border-slate-100"
+              />
+           </div>
 
-            <div className="pt-6 relative z-10">
-              <button 
-                onClick={handleSave} 
-                disabled={isSaving} 
-                className="w-full bg-emerald-700 text-white py-6 rounded-[32px] font-black text-xl flex items-center justify-center gap-4 shadow-2xl shadow-emerald-700/20 active:scale-95 transition-all disabled:opacity-50"
-              >
-                {isSaving ? <Loader2 className="animate-spin" /> : <><Save size={24} /> সেটিংস আপডেট করুন</>}
-              </button>
-            </div>
-            
-            <div className="bg-amber-50 p-6 rounded-[32px] border border-amber-100 flex gap-4 mt-6">
-               <Info className="text-amber-600 shrink-0" />
-               <p className="text-[11px] text-amber-800 font-bold leading-relaxed">
-                 Adsterra বা অন্য নেটওয়ার্ক ব্যবহার করলে 'Script' টাইপ সিলেক্ট করে পুরো কোডটি কন্টেন্ট বক্সে দিন। AdSense এর জন্য 'ID' অথবা 'Script' যেকোনোটি ব্যবহার করা যাবে।
-               </p>
-            </div>
-          </div>
+           <button 
+            onClick={handleSave} 
+            disabled={isSaving}
+            className="w-full bg-slate-900 text-white py-6 rounded-[32px] font-black text-lg flex items-center justify-center gap-3 shadow-2xl active:scale-95 transition-all disabled:opacity-50"
+           >
+             {isSaving ? <Loader2 className="animate-spin" /> : <><Save size={24} /> {view === 'edit' ? 'আপডেট করুন' : 'পাবলিশ করুন'}</>}
+           </button>
         </div>
-      </div>
+      )}
     </div>
   );
 };
