@@ -2,57 +2,88 @@
 <!DOCTYPE html>
 <html lang="bn">
 <head>
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3064118239935067"
-     crossorigin="anonymous"></script>
-    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     
-    <meta name="google-site-verification" content="_tMwmEUf2uNkDLSXmT8_qwy5E03N_DTNvJ563aghd9U" />
-
-    <!-- Google AdMob Publisher ID (আপনার স্ক্রিনশটের প্রথম অংশের কোড) -->
+    <meta name="google-site-verification" content="7a7506877f459b7b">
     <meta name="google-adsense-account" content="ca-pub-3064118239935067">
-
-    <!-- Google AdMob / AdSense Integration -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3064118239935067" crossorigin="anonymous"></script>
 
-
-    <!-- এসইও এবং মেটা ট্যাগ (SEO & Meta Tags) -->
     <title>Smart Quiz Pro - বিসিএস, ভর্তি পরীক্ষা ও কুইজ প্রস্তুতি</title>
-    <meta name="description" content="বিসিএস প্রস্তুতি, বিশ্ববিদ্যালয় ভর্তি পরীক্ষা এবং ক্লাস ১-১২ এর শিক্ষার্থীদের জন্য সেরা কুইজ অ্যাপ। স্মার্টলি কুইজ খেলুন এবং নিজেকে সবার থেকে এগিয়ে রাখুন।">
-    <meta name="keywords" content="বিসিএস প্রস্তুতি, কুইজ গেম, BCS Quiz, University Admission, Smart Quiz Pro, পড়াশোনা">
-    <meta name="author" content="Smart Quiz Pro Team">
-
-    <!-- ওপেন গ্রাফ (Social Media Sharing) -->
-    <meta property="og:title" content="Smart Quiz Pro - সেরা কুইজ প্ল্যাটফর্ম">
-    <meta property="og:description" content="পড়াশোনা এখন হবে খেলার ছলে। কুইজ খেলুন এবং জ্ঞান অর্জন করুন।">
-    <meta property="og:image" content="https://cdn-icons-png.flaticon.com/512/3407/3407024.png">
-    <meta property="og:type" content="website">
-
+    
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#065f46">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
-        * { -webkit-tap-highlight-color: transparent; outline: none; box-sizing: border-box; }
+        :root {
+            --app-height: 100%;
+        }
+
+        html, body {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Prevent body scroll, use container scroll */
+            position: fixed; /* Prevents background move on mobile */
+        }
+
         body { 
             font-family: 'Hind Siliguri', sans-serif; 
-            background-color: #ffffff; 
-            overscroll-behavior-y: contain; 
-            margin: 0; 
-            padding: 0; 
-            overflow-x: hidden;
+            background-color: #f8fafc; 
             color: #1e293b;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior: none;
         }
+
+        #root {
+            height: 100dvh; /* Dynamic Viewport Height for mobile browsers */
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        * { 
+            box-sizing: border-box; 
+            -webkit-overflow-scrolling: touch;
+        }
+
         .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
+        /* Premium Page Transitions */
         .page-transition {
-            animation: fadeIn 0.3s ease-in-out;
+            animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(5px); }
+
+        @keyframes slideUpFade {
+            from { opacity: 0; transform: translateY(15px); }
             to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Prevent button jump and improve tap feel */
+        button:active {
+            transform: scale(0.95);
+            transition: transform 0.1s ease;
+        }
+
+        /* Glassmorphism effects */
+        .glass {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        /* iPhone Notch Support */
+        .safe-pb {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        .safe-pt {
+            padding-top: env(safe-area-inset-top);
         }
     </style>
 
@@ -75,8 +106,9 @@
       }
     }
     </script>
+<link rel="stylesheet" href="/index.css">
 </head>
-<body class="bg-slate-50">
+<body>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
 </body>
