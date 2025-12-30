@@ -10,7 +10,7 @@ import ProgressTab from './ProgressTab';
 import QuizConfigModal from './QuizConfigModal';
 import EditProfileModal from './EditProfileModal';
 import { UserProfile, QuizResult, Question, Notification, Lesson } from '../types';
-import { X, ArrowLeft, BellOff } from 'lucide-react';
+import { X, ArrowLeft, BellOff, BookOpen, Clock, PlayCircle } from 'lucide-react';
 import { Language } from '../services/translations';
 
 interface MainLayoutProps {
@@ -63,102 +63,107 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   };
 
   const renderTab = () => {
-    switch (activeTab) {
-      case 'home': 
-        return (
+    return (
+      <div key={activeTab} className="page-transition h-full overflow-y-auto no-scrollbar">
+        {activeTab === 'home' && (
           <HomeTab 
-            user={user} 
-            history={history}
-            notifications={notifications} 
-            lessons={lessons} 
-            onShowNotifications={() => setShowNotifications(true)} 
-            onLogout={onLogout} 
-            onSubjectSelect={handleSubjectClick} 
-            onLessonSelect={(l) => setActiveLesson(l)} 
+            user={user} history={history} notifications={notifications} lessons={lessons} 
+            onShowNotifications={() => setShowNotifications(true)} onLogout={onLogout} 
+            onSubjectSelect={handleSubjectClick} onLessonSelect={(l) => setActiveLesson(l)} 
             onEditProfile={(tab = 'profile') => setProfileModal({show: true, tab})}
-            onSubmitDeposit={onSubmitDeposit}
-            onSubmitWithdraw={onSubmitWithdraw}
+            onSubmitDeposit={onSubmitDeposit} onSubmitWithdraw={onSubmitWithdraw}
           />
-        );
-      case 'community': return <CommunityTab user={user} />;
-      case 'exam': return <ExamTab user={user} onSubjectSelect={handleSubjectClick} onSubmitDeposit={onSubmitDeposit} onSubmitWithdraw={onSubmitWithdraw} />;
-      case 'progress': return <ProgressTab user={user} history={history} />;
-      case 'leaderboard': return <LeaderboardTab />;
-      case 'history': return <HistoryTab history={history} />;
-      default: return null;
-    }
+        )}
+        {activeTab === 'community' && <CommunityTab user={user} />}
+        {activeTab === 'exam' && <ExamTab user={user} onSubjectSelect={handleSubjectClick} onSubmitDeposit={onSubmitDeposit} onSubmitWithdraw={onSubmitWithdraw} />}
+        {activeTab === 'progress' && <ProgressTab user={user} history={history} />}
+        {activeTab === 'leaderboard' && <LeaderboardTab />}
+        {activeTab === 'history' && <HistoryTab history={history} />}
+      </div>
+    );
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col max-w-md mx-auto relative border-x border-gray-100 shadow-xl overflow-hidden">
-      <div className="flex-grow overflow-y-auto pb-24">
+    <div className="h-full w-full bg-slate-50 flex flex-col max-w-md mx-auto relative border-x border-gray-100 overflow-hidden">
+      {/* Main Content Area */}
+      <div className="flex-grow overflow-hidden pb-[88px]">
         {renderTab()}
       </div>
+      
+      {/* Navigation */}
       <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
       
+      {/* Config Modal */}
       {showConfig && selectedSubject && (
         <QuizConfigModal 
-          subject={selectedSubject} 
-          isLive={isLiveMode}
-          isPaid={isPaidMode}
-          entryFee={entryFee}
+          subject={selectedSubject} isLive={isLiveMode} isPaid={isPaidMode} entryFee={entryFee}
           onClose={() => setShowConfig(false)} 
           onStart={(config) => {
             setShowConfig(false);
             onSubjectSelect(selectedSubject, { 
-              ...config, 
-              isLive: isLiveMode, 
-              isPaid: isPaidMode,
-              entryFee: entryFee,
-              quizId: selectedQuizId || undefined,
-              collection: selectedCollection
+              ...config, isLive: isLiveMode, isPaid: isPaidMode, entryFee: entryFee,
+              quizId: selectedQuizId || undefined, collection: selectedCollection
             });
           }}
         />
       )}
 
+      {/* Profile Modal */}
       {profileModal.show && (
         <EditProfileModal 
-          user={user} 
-          initialTab={profileModal.tab} 
+          user={user} initialTab={profileModal.tab} 
           onClose={() => setProfileModal({...profileModal, show: false})} 
           onUpdate={onUpdateProfile} 
         />
       )}
 
+      {/* Lesson Reader */}
       {activeLesson && (
-        <div className="fixed inset-0 bg-white z-[300] flex flex-col">
-           <div className="p-5 flex items-center justify-between border-b bg-white">
-              <button onClick={() => setActiveLesson(null)} className="p-2.5 bg-gray-50 rounded-2xl"><ArrowLeft size={24} /></button>
-              <span className="font-black text-gray-800">লিসন মোড</span>
+        <div className="fixed inset-0 bg-[#F8FAFC] z-[2000] flex flex-col font-['Hind_Siliguri'] animate-in slide-in-from-bottom duration-500">
+           <div className="p-6 flex items-center justify-between border-b bg-white/90 backdrop-blur-xl sticky top-0 z-10 safe-pt">
+              <button onClick={() => setActiveLesson(null)} className="p-3 bg-slate-50 rounded-2xl active:scale-90"><ArrowLeft size={24} /></button>
+              <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-4 py-1.5 rounded-full">{activeLesson.category}</span>
               <div className="w-10"></div>
            </div>
-           <div className="flex-grow overflow-y-auto p-6 no-scrollbar">
-              <h2 className="text-2xl font-black text-gray-900 mb-4">{activeLesson.title}</h2>
-              <div className="prose text-gray-700 whitespace-pre-wrap">{activeLesson.content}</div>
+           
+           <div className="flex-grow overflow-y-auto p-8 no-scrollbar pb-32">
+              <h2 className="text-3xl font-black text-slate-900 mb-8 leading-tight">{activeLesson.title}</h2>
+              <div className="bg-white p-8 rounded-[40px] shadow-sm border border-slate-100 text-slate-700 whitespace-pre-wrap leading-loose text-lg font-medium">
+                {activeLesson.content}
+              </div>
+           </div>
+           
+           <div className="fixed bottom-10 left-1/2 -translate-x-1/2 w-full max-w-[340px] px-4 z-20 safe-pb">
+              <button 
+                onClick={() => { handleSubjectClick(activeLesson.title, false, false, 0, undefined, 'lessons'); setActiveLesson(null); }}
+                className="w-full bg-slate-900 text-white py-6 rounded-[32px] font-black text-lg shadow-2xl active:scale-95 transition-all"
+              >
+                 কুইজ শুরু করুন
+              </button>
            </div>
         </div>
       )}
 
+      {/* Notifications Panel */}
       {showNotifications && (
-        <div className="fixed inset-0 bg-black/60 z-[2000] backdrop-blur-md flex items-end justify-center">
-          <div className="bg-white w-full max-w-md rounded-t-[40px] p-8 animate-in slide-in-from-bottom-24 max-h-[85vh] flex flex-col shadow-2xl">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-black text-gray-900">নোটিফিকেশন</h3>
-              <button onClick={() => setShowNotifications(false)} className="p-3 bg-gray-100 rounded-full text-slate-400"><X size={20} /></button>
+        <div className="fixed inset-0 bg-black/60 z-[3000] backdrop-blur-md flex items-end justify-center animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-md rounded-t-[50px] p-8 animate-in slide-in-from-bottom-24 max-h-[85vh] flex flex-col shadow-2xl border-t border-white/20 safe-pb">
+            <div className="flex justify-between items-center mb-8">
+              <h3 className="text-2xl font-black text-slate-900">নোটিফিকেশন</h3>
+              <button onClick={() => setShowNotifications(false)} className="p-3 bg-slate-50 rounded-full text-slate-400 active:scale-90"><X size={20} /></button>
             </div>
             <div className="flex-grow overflow-y-auto space-y-4 no-scrollbar pb-10">
               {notifications.map(n => (
-                <div key={n.id} className="p-5 bg-slate-50 rounded-3xl border border-slate-100 relative overflow-hidden group">
-                  <div className="absolute top-0 left-0 w-1 h-full bg-emerald-600"></div>
-                  <h4 className="font-black text-emerald-800 text-sm">{n.title}</h4>
-                  <p className="text-xs text-gray-600 mt-1 leading-relaxed">{n.message}</p>
-                  <p className="text-[8px] font-black text-gray-400 mt-2 uppercase tracking-widest">{n.time || 'JUST NOW'}</p>
+                <div key={n.id} className="p-6 bg-slate-50/50 rounded-[32px] border border-slate-100 relative overflow-hidden group hover:bg-white transition-all">
+                  <div className="absolute top-0 left-0 w-1.5 h-full bg-emerald-600"></div>
+                  <h4 className="font-black text-slate-800 text-sm">{n.title}</h4>
+                  <p className="text-xs text-slate-500 mt-1.5 leading-relaxed font-medium">{n.message}</p>
+                  <p className="text-[9px] font-black text-slate-300 mt-3 uppercase tracking-widest">{n.time || 'এইমাত্র'}</p>
                 </div>
               ))}
               {notifications.length === 0 && (
-                <div className="py-20 text-center flex flex-col items-center">
-                   <div className="w-16 h-16 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center mb-4"><BellOff size={32}/></div>
+                <div className="py-24 text-center">
+                   <div className="w-20 h-20 bg-slate-50 text-slate-200 rounded-full flex items-center justify-center mx-auto mb-6"><BellOff size={40}/></div>
                    <p className="text-slate-300 font-black uppercase text-[10px] tracking-widest">কোনো নোটিফিকেশন নেই</p>
                 </div>
               )}
