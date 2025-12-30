@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Loader2, BookOpen, Star, Zap, Image as ImageIcon, Video, X, ChevronRight, LayoutGrid, FileText, Clock, Calendar, Sparkles, Eye, CheckCircle2, Info, Edit3, Save, RotateCcw, PenTool, Pencil } from 'lucide-react';
+import { Plus, Trash2, Loader2, BookOpen, Star, Zap, Image as ImageIcon, Video, X, ChevronRight, LayoutGrid, FileText, Clock, Calendar, Sparkles, Eye, CheckCircle2, Info, Edit3, Save, RotateCcw, PenTool, Pencil, FileCode } from 'lucide-react';
 import { db } from '../../services/firebase';
 import { collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, doc, deleteDoc, limit, updateDoc } from 'firebase/firestore';
 import { SUBJECTS } from '../../constants';
@@ -12,6 +12,8 @@ const QuizManager: React.FC<{ onDeleteQuiz: any }> = ({ onDeleteQuiz }) => {
   const [isPublishing, setIsPublishing] = useState(false);
   const [selectedDetail, setSelectedDetail] = useState<any | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkJson, setBulkJson] = useState('');
 
   // General States
   const [title, setTitle] = useState('');
@@ -77,6 +79,29 @@ const QuizManager: React.FC<{ onDeleteQuiz: any }> = ({ onDeleteQuiz }) => {
     setCurrentQ(''); setOpts(['', '', '', '']); setCorrectIdx(null); setMediaUrl(''); setMediaType('none'); setExplanation('');
   };
 
+  const handleBulkUpload = () => {
+    try {
+      const parsed = JSON.parse(bulkJson);
+      if (!Array.isArray(parsed)) throw new Error("JSON must be an array");
+      
+      const validated: Question[] = parsed.map(q => ({
+        question: q.question || "Untitled Question",
+        options: Array.isArray(q.options) && q.options.length === 4 ? q.options : ["Option 1", "Option 2", "Option 3", "Option 4"],
+        correctAnswer: typeof q.correctAnswer === 'number' ? q.correctAnswer : 0,
+        explanation: q.explanation || "",
+        mediaUrl: q.mediaUrl || "",
+        mediaType: q.mediaType || "none"
+      }));
+
+      setManualQuestions([...manualQuestions, ...validated]);
+      setBulkJson('');
+      setShowBulkModal(false);
+      alert(`${validated.length}টি প্রশ্ন সফলভাবে যোগ হয়েছে!`);
+    } catch (e) {
+      alert("JSON ফরম্যাট সঠিক নয়! উদাহরণ: [{question: '...', options: ['...', ...], correctAnswer: 0}]");
+    }
+  };
+
   const resetEditor = () => {
     setTitle('');
     setManualQuestions([]);
@@ -126,10 +151,7 @@ const QuizManager: React.FC<{ onDeleteQuiz: any }> = ({ onDeleteQuiz }) => {
   };
 
   const handleEditSpecificQuestion = (quiz: any, qIdx: number) => {
-    // 1. Setup the main quiz editor
     handleEditInit(quiz);
-    
-    // 2. Load the specific question into building states
     const targetQ = quiz.manualQuestions[qIdx];
     setCurrentQ(targetQ.question);
     setOpts([...targetQ.options]);
@@ -137,11 +159,7 @@ const QuizManager: React.FC<{ onDeleteQuiz: any }> = ({ onDeleteQuiz }) => {
     setExplanation(targetQ.explanation || '');
     setMediaUrl(targetQ.mediaUrl || '');
     setMediaType(targetQ.mediaType || 'none');
-    
-    // 3. Temporarily remove it from the list so when they "Add to List" it updates/replaces
     setManualQuestions(quiz.manualQuestions.filter((_: any, i: number) => i !== qIdx));
-    
-    // UI Feedback
     setSelectedDetail(null);
     setActiveMode('create');
     setTimeout(() => {
@@ -404,6 +422,12 @@ const QuizManager: React.FC<{ onDeleteQuiz: any }> = ({ onDeleteQuiz }) => {
                    <div className="p-3 bg-emerald-50 rounded-2xl text-emerald-700 shadow-sm"><Plus size={24} strokeWidth={3}/></div>
                    <h3 className="text-2xl font-black text-slate-900">প্রশ্ন যুক্ত করুন</h3>
                 </div>
+                <button 
+                  onClick={() => setShowBulkModal(true)}
+                  className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase shadow-lg active:scale-95 transition-all"
+                >
+                  <FileCode size={18}/> বাল্ক আপলোড
+                </button>
               </div>
 
               <div className="space-y-8">
@@ -455,7 +479,6 @@ const QuizManager: React.FC<{ onDeleteQuiz: any }> = ({ onDeleteQuiz }) => {
                   <Plus size={28} strokeWidth={4} /> লিস্টে যোগ করুন
                 </button>
 
-                {/* Manual Questions List (Sortable/Editable) */}
                 {manualQuestions.length > 0 && (
                    <div className="pt-10 border-t border-slate-50">
                       <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6">সংযুক্ত প্রশ্নসমূহ ({manualQuestions.length})</h4>
@@ -534,15 +557,38 @@ const QuizManager: React.FC<{ onDeleteQuiz: any }> = ({ onDeleteQuiz }) => {
               </button>
             </div>
           ))}
-          {quizzes.length === 0 && (
-             <div className="col-span-full py-20 text-center bg-white rounded-[40px] border-2 border-dashed border-slate-100">
-                <p className="text-slate-300 font-black uppercase text-xs tracking-widest">এই ক্যাটাগরিতে কোনো ডাটা নেই</p>
-             </div>
-          )}
         </div>
       )}
 
-      {/* Detail View Modal */}
+      {/* Detail Modal & Bulk Modal Logic */}
+      {showBulkModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[5000] flex items-center justify-center p-6">
+           <div className="bg-white w-full max-w-2xl rounded-[50px] p-10 shadow-2xl animate-in zoom-in-95 duration-200 border border-white/20 relative">
+              <button onClick={() => setShowBulkModal(false)} className="absolute top-8 right-8 text-slate-400 hover:text-rose-500 transition-all"><X/></button>
+              <div className="flex items-center gap-4 mb-8">
+                 <div className="p-4 bg-emerald-50 text-emerald-700 rounded-3xl"><FileCode size={32}/></div>
+                 <div>
+                    <h3 className="text-2xl font-black text-slate-900 leading-tight">বাল্ক JSON আপলোড</h3>
+                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">প্রশ্নের তালিকা সরাসরি পেস্ট করুন</p>
+                 </div>
+              </div>
+              <textarea 
+                value={bulkJson}
+                onChange={(e) => setBulkJson(e.target.value)}
+                placeholder='[{"question": "What is 2+2?", "options": ["3","4","5","6"], "correctAnswer": 1}]'
+                className="w-full h-72 bg-slate-50 border-2 border-slate-50 p-8 rounded-[40px] font-mono text-sm outline-none focus:bg-white focus:border-emerald-100 transition-all shadow-inner"
+              />
+              <div className="mt-8 flex flex-col gap-4">
+                 <button onClick={handleBulkUpload} className="w-full bg-emerald-700 text-white py-6 rounded-[30px] font-black text-lg shadow-xl shadow-emerald-700/20 active:scale-95 transition-all">প্রশ্নের লিস্ট ইম্পোর্ট করুন</button>
+                 <div className="p-5 bg-amber-50 rounded-[28px] border border-amber-100 flex gap-3">
+                    <Info size={18} className="text-amber-600 shrink-0 mt-0.5" />
+                    <p className="text-[11px] text-amber-800 font-bold leading-relaxed">JSON ফরম্যাট অবশ্যই একটি Array হতে হবে এবং প্রতিটি অবজেক্টে question, options (৪টি), correctAnswer (০-৩) প্রপার্টি থাকতে হবে।</p>
+                 </div>
+              </div>
+           </div>
+        </div>
+      )}
+
       {selectedDetail && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[5000] flex items-center justify-center p-6">
            <div className="bg-white w-full max-w-4xl max-h-[85vh] rounded-[50px] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-300">
@@ -609,13 +655,6 @@ const QuizManager: React.FC<{ onDeleteQuiz: any }> = ({ onDeleteQuiz }) => {
                                          <Pencil size={14}/> এডিট
                                        </button>
                                     </div>
-                                    
-                                    {q.mediaUrl && q.mediaType !== 'none' && (
-                                       <div className="rounded-2xl overflow-hidden border max-w-sm">
-                                          {q.mediaType === 'image' ? <img src={q.mediaUrl} className="w-full h-auto" /> : <div className="p-3 bg-slate-100 font-bold text-[10px] truncate">{q.mediaUrl}</div>}
-                                       </div>
-                                    )}
-
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                        {q.options.map((opt: string, idx: number) => (
                                           <div key={idx} className={`p-4 rounded-2xl text-sm font-black flex items-center justify-between border ${idx === q.correctAnswer ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-slate-50 border-slate-50 text-slate-400'}`}>
@@ -623,13 +662,6 @@ const QuizManager: React.FC<{ onDeleteQuiz: any }> = ({ onDeleteQuiz }) => {
                                           </div>
                                        ))}
                                     </div>
-
-                                    {q.explanation && (
-                                      <div className="mt-4 p-4 bg-amber-50 rounded-2xl border border-amber-100 flex gap-3">
-                                         <Info size={16} className="text-amber-600 shrink-0 mt-0.5" />
-                                         <p className="text-xs text-amber-800 font-bold leading-relaxed">{q.explanation}</p>
-                                      </div>
-                                    )}
                                  </div>
                               </div>
                            </div>
