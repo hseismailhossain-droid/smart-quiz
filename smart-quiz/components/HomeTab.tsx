@@ -1,9 +1,9 @@
 
-import { Bell, BookOpen, Trophy, Flame, Star, LogOut, Edit3, Share2, Wallet, PlusCircle, ArrowUpRight, X, BarChart3, Users } from 'lucide-react';
+import { Bell, BookOpen, Trophy, Flame, Star, LogOut, Edit3, Share2, Wallet, PlusCircle, ArrowUpRight, X, BarChart3, Users, CheckCircle2 } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { Notification, UserProfile, Poll, AdminNotice, QuizResult, Question, AdPlacement } from '../types';
 import { db, auth } from '../services/firebase';
-import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, arrayUnion, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, arrayUnion, getDocs, increment } from 'firebase/firestore';
 import AdRenderer from './AdRenderer';
 
 interface HomeTabProps {
@@ -25,6 +25,7 @@ const HomeTab: React.FC<HomeTabProps> = ({
   const [adminNotices, setAdminNotices] = useState<AdminNotice[]>([]);
   const [activePolls, setActivePolls] = useState<Poll[]>([]);
   const [ads, setAds] = useState<Record<string, AdPlacement>>({});
+  const [votingId, setVotingId] = useState<string | null>(null);
 
   useEffect(() => {
     // Fetch Ads Real-time
@@ -46,17 +47,44 @@ const HomeTab: React.FC<HomeTabProps> = ({
     return () => { unsubAds(); unsubSpecial(); unsubNotice(); unsubPoll(); };
   }, []);
 
+  const handleVote = async (pollId: string, optionIndex: number) => {
+    if (!auth.currentUser || votingId) return;
+    const poll = activePolls.find(p => p.id === pollId);
+    if (!poll || poll.votedBy?.includes(auth.currentUser.uid)) return;
+
+    setVotingId(pollId);
+    try {
+      const pollRef = doc(db, 'admin_polls', pollId);
+      const newOptions = [...poll.options];
+      newOptions[optionIndex].votes += 1;
+      
+      await updateDoc(pollRef, {
+        options: newOptions,
+        votedBy: arrayUnion(auth.currentUser.uid)
+      });
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setVotingId(null);
+    }
+  };
+
   return (
     <div className="p-4 space-y-6 bg-white pb-24 font-['Hind_Siliguri']">
       {/* Header */}
       <div className="flex justify-between items-center px-1">
-          <div className="flex items-center gap-4">
-            <img src={user?.avatarUrl} alt="avatar" className="w-14 h-14 rounded-2xl border-2 border-emerald-500 object-cover" />
+          <button onClick={() => onEditProfile('profile')} className="flex items-center gap-4 text-left group">
+            <div className="relative">
+              <img src={user?.avatarUrl} alt="avatar" className="w-14 h-14 rounded-2xl border-2 border-emerald-500 object-cover transition-transform group-active:scale-95" />
+              <div className="absolute -bottom-1 -right-1 bg-white p-1 rounded-lg shadow-sm border border-slate-100">
+                <Edit3 size={10} className="text-emerald-600" />
+              </div>
+            </div>
             <div>
               <h3 className="font-black text-lg text-gray-900 leading-tight truncate max-w-[120px]">{user?.name}</h3>
               <p className="text-[9px] font-bold text-gray-400 uppercase">{user?.category?.split(' ')[0]}</p>
             </div>
-          </div>
+          </button>
           <div className="flex gap-2">
             <button onClick={onShowNotifications} className="p-3 bg-slate-50 text-slate-600 rounded-2xl relative transition-all active:scale-90">
               <Bell size={20} />
@@ -103,6 +131,56 @@ const HomeTab: React.FC<HomeTabProps> = ({
                 <p className="text-[11px] text-slate-500 mt-1 line-clamp-2 px-2 leading-relaxed">{notice.content}</p>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* User Poll Section */}
+      {activePolls.length > 0 && (
+        <div className="px-1">
+          <div className="bg-slate-900 p-8 rounded-[48px] text-white shadow-2xl relative overflow-hidden">
+             <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl"></div>
+             <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-6">
+                   <BarChart3 size={20} className="text-emerald-400" />
+                   <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">মতামত দিন</span>
+                </div>
+                {activePolls.map(poll => {
+                  const hasVoted = poll.votedBy?.includes(auth.currentUser?.uid || '');
+                  const totalVotes = poll.options.reduce((acc, curr) => acc + curr.votes, 0);
+                  
+                  return (
+                    <div key={poll.id} className="space-y-6">
+                       <h5 className="text-lg font-black leading-tight">{poll.question}</h5>
+                       <div className="space-y-3">
+                          {poll.options.map((opt, idx) => {
+                            const percent = totalVotes > 0 ? Math.round((opt.votes / totalVotes) * 100) : 0;
+                            return (
+                              <button 
+                                key={idx} 
+                                disabled={hasVoted || !!votingId}
+                                onClick={() => handleVote(poll.id, idx)}
+                                className={`w-full group relative overflow-hidden rounded-2xl transition-all ${hasVoted ? 'bg-white/5 cursor-default' : 'bg-white/10 hover:bg-white/20 active:scale-[0.98]'}`}
+                              >
+                                {hasVoted && (
+                                   <div 
+                                    className="absolute inset-y-0 left-0 bg-emerald-500/20 transition-all duration-1000" 
+                                    style={{ width: `${percent}%` }}
+                                   ></div>
+                                )}
+                                <div className="relative z-10 p-4 flex justify-between items-center">
+                                   <span className={`text-xs font-bold ${hasVoted ? 'text-white' : 'text-slate-300'}`}>{opt.text}</span>
+                                   {hasVoted && <span className="text-[10px] font-black text-emerald-400">{percent}%</span>}
+                                </div>
+                              </button>
+                            );
+                          })}
+                       </div>
+                       {hasVoted && <p className="text-[9px] font-bold text-center text-slate-500 uppercase tracking-widest">ভোট দেওয়ার জন্য ধন্যবাদ!</p>}
+                    </div>
+                  );
+                })}
+             </div>
           </div>
         </div>
       )}
