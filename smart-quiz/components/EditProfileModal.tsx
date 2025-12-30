@@ -70,6 +70,28 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onUp
     } finally { setIsSaving(false); }
   };
 
+  const handleReportSubmit = async () => {
+    if (!reportMsg.trim()) return alert("আপনার অভিযোগটি লিখুন।");
+    setIsSendingRequest(true);
+    try {
+      await addDoc(collection(db, 'user_reports'), {
+        uid: auth.currentUser?.uid,
+        userName: user.name,
+        category: user.category || 'General',
+        message: reportMsg.trim(),
+        status: 'pending',
+        timestamp: serverTimestamp()
+      });
+      alert("রিপোর্ট পাঠানো হয়েছে! এডমিন শীঘ্রই আপনার সাথে যোগাযোগ করবে।");
+      setReportMsg('');
+      onClose();
+    } catch (e) {
+      alert("রিপোর্ট পাঠানো সম্ভব হয়নি। পুনরায় চেষ্টা করুন।");
+    } finally {
+      setIsSendingRequest(false);
+    }
+  };
+
   const handleWalletSubmit = async () => {
     if (!amount || Number(amount) <= 0) return alert("সঠিক পরিমাণ দিন।");
     if (walletMode === 'deposit' && !trxId.trim()) return alert("TrxID দিন।");
@@ -133,7 +155,6 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onUp
                 <div className="w-32 h-32 rounded-[44px] border-4 border-emerald-500 overflow-hidden bg-slate-100 shadow-xl transition-transform hover:scale-105 duration-300">
                   <img src={selectedAvatar} alt="avatar" className="w-full h-full object-cover" />
                 </div>
-                {/* Profile Picture Upload Button as Circled in Screenshot */}
                 <button 
                   onClick={() => fileInputRef.current?.click()}
                   className="absolute -bottom-1 -right-1 bg-emerald-700 text-white p-3 rounded-2xl border-4 border-white shadow-lg active:scale-90 transition-all hover:bg-emerald-800"
@@ -238,8 +259,19 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onUp
 
         {tab === 'report' && (
           <div className="space-y-6 animate-in slide-in-from-right-4 pb-10">
-             <textarea value={reportMsg} onChange={(e) => setReportMsg(e.target.value)} placeholder="আপনার অভিযোগ এখানে বিস্তারিত লিখুন..." className="w-full bg-slate-50 p-6 rounded-[32px] h-48 font-bold border border-slate-100 outline-none" />
-             <button onClick={() => { if(reportMsg.trim()) alert("রিপোর্ট পাঠানো হয়েছে!"); onClose(); }} className="w-full bg-slate-900 text-white py-6 rounded-2xl font-black text-lg">মেসেজ পাঠান</button>
+             <textarea 
+              value={reportMsg} 
+              onChange={(e) => setReportMsg(e.target.value)} 
+              placeholder="আপনার অভিযোগ এখানে বিস্তারিত লিখুন..." 
+              className="w-full bg-slate-50 p-6 rounded-[32px] h-48 font-bold border border-slate-100 outline-none focus:bg-white focus:border-rose-100 transition-all" 
+             />
+             <button 
+              onClick={handleReportSubmit} 
+              disabled={isSendingRequest}
+              className="w-full bg-slate-900 text-white py-6 rounded-2xl font-black text-lg shadow-xl shadow-slate-900/20 active:scale-95 transition-all flex items-center justify-center gap-3"
+             >
+                {isSendingRequest ? <Loader2 className="animate-spin" /> : <><Send size={20} /> মেসেজ পাঠান</>}
+             </button>
           </div>
         )}
 
