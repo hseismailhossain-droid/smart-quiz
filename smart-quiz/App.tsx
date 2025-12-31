@@ -5,18 +5,20 @@ import SetupScreen from './components/SetupScreen';
 import MainLayout from './components/MainLayout';
 import QuizScreen from './components/QuizScreen';
 import AdminLayout from './components/admin/AdminLayout';
-import { auth, db } from './services/firebase';
+import { auth, db, refreshFirestore } from './services/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, onSnapshot, setDoc, updateDoc, collection, query, orderBy, addDoc, getDoc, deleteDoc, increment, serverTimestamp, where, limit, writeBatch } from 'firebase/firestore';
-import { UserProfile, QuizResult, Notification, DepositRequest, Lesson, UserReport, WithdrawRequest, Question } from './types';
+import { UserProfile, QuizResult, Notification, Question } from './types';
 import { ADMIN_EMAIL } from './constants';
 import { Language } from './services/translations';
+import { AlertCircle, RefreshCw } from 'lucide-react';
 
 const App: React.FC = () => {
-  const [view, setView] = useState<'auth' | 'setup' | 'main' | 'quiz' | 'admin' | 'loading' | 'privacy'>('loading');
+  const [view, setView] = useState<'auth' | 'setup' | 'main' | 'quiz' | 'admin' | 'loading' | 'error'>('loading');
   const [user, setUser] = useState<UserProfile | null>(null);
   const [lang, setLang] = useState<Language>('bn');
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
   const [history, setHistory] = useState<{
     exams: QuizResult[];
@@ -37,64 +39,77 @@ const App: React.FC = () => {
   
   const firestoreUnsubscribers = useRef<(() => void)[]>([]);
 
+  // Crash protection: Handle unhandled promise rejections
+  useEffect(() => {
+    const handleError = (event: PromiseRejectionEvent) => {
+      console.error('Unhandled rejection:', event.reason);
+      if (event.reason?.message?.includes('IndexedDB')) {
+        refreshFirestore();
+      }
+    };
+    window.addEventListener('unhandledrejection', handleError);
+    return () => window.removeEventListener('unhandledrejection', handleError);
+  }, []);
+
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
-      firestoreUnsubscribers.current.forEach(unsub => unsub());
-      firestoreUnsubscribers.current = [];
+      try {
+        firestoreUnsubscribers.current.forEach(unsub => unsub());
+        firestoreUnsubscribers.current = [];
 
-      if (firebaseUser) {
-        const isUserAdmin = firebaseUser.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+        if (firebaseUser) {
+          const isUserAdmin = firebaseUser.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 
-        const unsubUser = onSnapshot(doc(db, 'users', firebaseUser.uid), (docSnap) => {
-          if (docSnap.exists()) {
-            setUser(docSnap.data() as UserProfile);
-            if (view === 'loading' || view === 'auth' || view === 'setup') {
-              setView(isUserAdmin ? 'admin' : 'main');
+          // Safe User SnapShot
+          const unsubUser = onSnapshot(doc(db, 'users', firebaseUser.uid), (docSnap) => {
+            if (docSnap.exists()) {
+              setUser(docSnap.data() as UserProfile);
+              if (view === 'loading' || view === 'auth' || view === 'setup') {
+                setView(isUserAdmin ? 'admin' : 'main');
+              }
+            } else {
+              if (isUserAdmin) setView('admin');
+              else setView('setup');
             }
-          } else {
-            if (isUserAdmin) setView('admin');
-            else setView('setup');
-          }
-        });
-        firestoreUnsubscribers.current.push(unsubUser);
+          }, (err) => {
+            console.error("User Snap Error:", err);
+            setErrorMsg("সার্ভারের সাথে সংযোগ বিচ্ছিন্ন হয়েছে।");
+            setView('error');
+          });
+          firestoreUnsubscribers.current.push(unsubUser);
 
-        const unsubNotif = onSnapshot(query(collection(db, 'notifications'), orderBy('timestamp', 'desc'), limit(10)), (snapshot) => {
-          setNotifications(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification)));
-        });
-        firestoreUnsubscribers.current.push(unsubNotif);
+          // Safe Notifications
+          const unsubNotif = onSnapshot(query(collection(db, 'notifications'), limit(10)), (snapshot) => {
+            const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
+            list.sort((a:any, b:any) => (b.timestamp || 0) - (a.timestamp || 0));
+            setNotifications(list);
+          });
+          firestoreUnsubscribers.current.push(unsubNotif);
 
-        // Fetch Exam History - Client side sorting to avoid index requirements
-        const unsubExams = onSnapshot(
-          query(collection(db, 'quiz_attempts'), where('uid', '==', firebaseUser.uid), limit(50)),
-          (snap) => {
-            const list = snap.docs.map(d => {
-              const data = d.data();
-              return { 
-                id: d.id, 
-                ...data, 
-                date: data.timestamp ? new Date(data.timestamp.seconds * 1000).toLocaleDateString('bn-BD') : 'এইমাত্র'
-              } as QuizResult;
-            });
-            // Client side sort descending by timestamp
-            list.sort((a: any, b: any) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
-            setHistory(prev => ({ ...prev, exams: list }));
-          }
-        );
-        firestoreUnsubscribers.current.push(unsubExams);
+          // Fetch Exam History - Client side sorting for stability
+          const unsubExams = onSnapshot(
+            query(collection(db, 'quiz_attempts'), where('uid', '==', firebaseUser.uid), limit(30)),
+            (snap) => {
+              const list = snap.docs.map(d => {
+                const data = d.data();
+                return { 
+                  id: d.id, 
+                  ...data, 
+                  date: data.timestamp ? new Date(data.timestamp.seconds * 1000).toLocaleDateString('bn-BD') : 'এইমাত্র'
+                } as QuizResult;
+              });
+              list.sort((a: any, b: any) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+              setHistory(prev => ({ ...prev, exams: list }));
+            }
+          );
+          firestoreUnsubscribers.current.push(unsubExams);
 
-        // Fetch Mistakes History - Client side sorting
-        const unsubMistakes = onSnapshot(
-          query(collection(db, 'user_mistakes'), where('uid', '==', firebaseUser.uid), limit(50)),
-          (snap) => {
-            const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
-            list.sort((a: any, b: any) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
-            setHistory(prev => ({ ...prev, mistakes: list }));
-          }
-        );
-        firestoreUnsubscribers.current.push(unsubMistakes);
-
-      } else {
-        setUser(null);
+        } else {
+          setUser(null);
+          setView('auth');
+        }
+      } catch (err) {
+        console.error("Auth Listener Error:", err);
         setView('auth');
       }
     });
@@ -130,36 +145,46 @@ const App: React.FC = () => {
         timestamp: serverTimestamp()
       });
 
-      if (res.mistakes && res.mistakes.length > 0) {
-        res.mistakes.forEach(q => {
-          const mistakeRef = doc(collection(db, 'user_mistakes'));
-          batch.set(mistakeRef, {
-            uid,
-            question: q.question,
-            options: q.options,
-            correctAnswer: q.correctAnswer,
-            explanation: q.explanation || '',
-            timestamp: serverTimestamp()
-          });
-        });
-      }
-
       await batch.commit();
     } catch (err) { 
-      console.error("Quiz Finish Save Error:", err); 
+      console.error("Quiz Save Error:", err); 
     }
-    
     setView('main');
   };
 
-  if (view === 'loading') return <div className="min-h-screen items-center justify-center bg-white flex"><div className="w-10 h-10 border-4 border-emerald-700 border-t-transparent rounded-full animate-spin"></div></div>;
+  if (view === 'loading') return (
+    <div className="min-h-screen items-center justify-center bg-white flex flex-col font-['Hind_Siliguri']">
+      <div className="w-12 h-12 border-4 border-emerald-700 border-t-transparent rounded-full animate-spin mb-4"></div>
+      <p className="text-slate-400 font-bold text-xs uppercase tracking-widest animate-pulse">Smart Quiz Pro লোড হচ্ছে...</p>
+    </div>
+  );
+
+  if (view === 'error') return (
+    <div className="min-h-screen items-center justify-center bg-white flex flex-col p-10 text-center font-['Hind_Siliguri']">
+       <div className="w-20 h-20 bg-rose-50 text-rose-500 rounded-3xl flex items-center justify-center mb-6 shadow-inner">
+          <AlertCircle size={40} />
+       </div>
+       <h2 className="text-xl font-black text-slate-900 mb-2">দুঃখিত, সমস্যা হয়েছে!</h2>
+       <p className="text-sm text-slate-500 font-bold mb-8 leading-relaxed">{errorMsg || "অ্যাপটি লোড করতে সমস্যা হচ্ছে। আপনার ইন্টারনেট কানেকশন চেক করুন।"}</p>
+       <button 
+        onClick={() => refreshFirestore()} 
+        className="bg-emerald-700 text-white px-8 py-4 rounded-2xl font-black flex items-center gap-2 shadow-xl active:scale-95 transition-all"
+       >
+         <RefreshCw size={18} /> আবার চেষ্টা করুন
+       </button>
+    </div>
+  );
+
   if (view === 'auth') return <AuthScreen onLogin={() => {}} lang={lang} toggleLanguage={() => setLang(lang === 'bn' ? 'en' : 'bn')} />;
+  
   if (view === 'setup') return <SetupScreen onComplete={async (name, cat) => {
     if (!auth.currentUser) return;
-    await setDoc(doc(db, 'users', auth.currentUser.uid), { 
-      name, email: auth.currentUser.email, category: cat, balance: 10, totalPoints: 0, streak: 1, avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=" + name 
-    });
-    setView('main');
+    try {
+      await setDoc(doc(db, 'users', auth.currentUser.uid), { 
+        name, email: auth.currentUser.email, category: cat, balance: 10, totalPoints: 0, streak: 1, avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=" + name 
+      });
+      setView('main');
+    } catch (e) { alert("সেটআপ ব্যর্থ হয়েছে।"); }
   }} lang={lang} />;
   
   if (view === 'quiz' && activeSubject && quizConfig) {
