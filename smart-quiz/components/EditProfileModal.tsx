@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Camera, Check, Loader2, User, ShieldAlert, Send, FileText, MessageSquare, Info, ShieldCheck, Wallet, ArrowUpCircle, ArrowDownCircle, Smartphone, Copy, RotateCcw } from 'lucide-react';
+import { X, Camera, Check, Loader2, User, ShieldAlert, Send, FileText, MessageSquare, Info, ShieldCheck, Wallet, ArrowUpCircle, ArrowDownCircle, Smartphone, Copy, RotateCcw, LogOut } from 'lucide-react';
 import { Category, UserProfile } from '../types';
 import { db, auth, refreshFirestore } from '../services/firebase';
 import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
@@ -9,6 +9,7 @@ interface EditProfileModalProps {
   user: UserProfile;
   onClose: () => void;
   onUpdate: (data: Partial<UserProfile>) => Promise<void>;
+  onLogout?: () => void | Promise<void>;
   initialTab?: 'profile' | 'report' | 'privacy' | 'wallet';
 }
 
@@ -20,7 +21,7 @@ const PRESET_AVATARS = [
   "https://api.dicebear.com/7.x/avataaars/svg?seed=Luna"
 ];
 
-const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onUpdate, initialTab = 'profile' }) => {
+const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onUpdate, onLogout, initialTab = 'profile' }) => {
   const [tab, setTab] = useState<'profile' | 'report' | 'privacy' | 'wallet'>(initialTab);
   const [name, setName] = useState(user.name);
   const [selectedAvatar, setSelectedAvatar] = useState(user.avatarUrl || PRESET_AVATARS[0]);
@@ -187,9 +188,21 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onUp
               <label className="text-[10px] font-black text-slate-400 uppercase px-2 tracking-widest">আপনার নাম</label>
               <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-slate-50 p-5 rounded-[24px] font-black outline-none border border-slate-100 focus:bg-white focus:border-emerald-100 shadow-inner" />
             </div>
-            <button onClick={handleSave} disabled={isSaving} className="w-full bg-emerald-700 text-white py-6 rounded-[28px] font-black text-lg shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3">
-              {isSaving ? <Loader2 className="animate-spin" /> : 'সব আপডেট করুন'}
-            </button>
+            
+            <div className="pt-4 space-y-4">
+              <button onClick={handleSave} disabled={isSaving} className="w-full bg-emerald-700 text-white py-6 rounded-[28px] font-black text-lg shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3">
+                {isSaving ? <Loader2 className="animate-spin" /> : 'সব আপডেট করুন'}
+              </button>
+              
+              {onLogout && (
+                <button 
+                  onClick={() => { if(confirm("আপনি কি নিশ্চিতভাবে লগআউট করতে চান?")) onLogout(); }}
+                  className="w-full bg-rose-50 text-rose-600 py-5 rounded-[24px] font-black text-sm uppercase flex items-center justify-center gap-2 border border-rose-100 active:scale-95 transition-all"
+                >
+                  <LogOut size={18} /> লগআউট করুন
+                </button>
+              )}
+            </div>
           </div>
         )}
 
