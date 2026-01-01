@@ -288,3 +288,4 @@ const QuizScreen: React.FC<QuizScreenProps> = ({
 };
 
 export default QuizScreen;
+  
