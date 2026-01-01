@@ -10,7 +10,7 @@ import ProgressTab from './ProgressTab';
 import QuizConfigModal from './QuizConfigModal';
 import EditProfileModal from './EditProfileModal';
 import { UserProfile, QuizResult, Question, Notification, Lesson } from '../types';
-import { X, ArrowLeft, BellOff, BookOpen, Clock, PlayCircle, CheckCircle2 } from 'lucide-react';
+import { X, ArrowLeft, BellOff, BookOpen, Clock, PlayCircle, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { Language } from '../services/translations';
 import { db } from '../services/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
@@ -36,10 +36,12 @@ interface MainLayoutProps {
   onLogout: () => void | Promise<void>;
   lang: Language;
   toggleLanguage: () => void;
+  isAdmin?: boolean;
+  onAdminSwitch?: () => void;
 }
 
 const MainLayout: React.FC<MainLayoutProps> = ({ 
-  user, history, notifications, lessons, setNotifications, onSubjectSelect, onUpdateProfile, onSubmitDeposit, onSubmitWithdraw, onLogout, lang, toggleLanguage 
+  user, history, notifications, lessons, setNotifications, onSubjectSelect, onUpdateProfile, onSubmitDeposit, onSubmitWithdraw, onLogout, lang, toggleLanguage, isAdmin, onAdminSwitch 
 }) => {
   const [activeTab, setActiveTab] = useState<'home' | 'community' | 'exam' | 'progress' | 'leaderboard' | 'history'>('home');
   const [showConfig, setShowConfig] = useState(false);
@@ -65,17 +67,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   };
 
   const handleMarkAllRead = async () => {
-    // Optimistic UI update
     const unreadIds = notifications.filter(n => !n.isRead).map(n => n.id);
     if (unreadIds.length === 0) return;
     
-    // Cloud update could be done via a loop or Cloud Function, 
-    // for simple web client we loop through unread ones.
     try {
       unreadIds.forEach(async (id) => {
         await updateDoc(doc(db, 'notifications', id), { isRead: true });
       });
-      // Notifications will auto-update via listener in App.tsx
     } catch (e) {
       console.error(e);
     }
@@ -106,6 +104,22 @@ const MainLayout: React.FC<MainLayoutProps> = ({
 
   return (
     <div className="h-full w-full bg-slate-50 flex flex-col max-w-md mx-auto relative border-x border-gray-100 overflow-hidden">
+      {/* Admin Switcher Pill */}
+      {isAdmin && onAdminSwitch && (
+        <div className="bg-slate-900/90 backdrop-blur-md px-4 py-2 flex items-center justify-between z-[200]">
+           <div className="flex items-center gap-2">
+              <ShieldCheck size={14} className="text-emerald-500" />
+              <span className="text-[10px] font-black text-white uppercase tracking-widest">Admin Mode</span>
+           </div>
+           <button 
+            onClick={onAdminSwitch}
+            className="bg-emerald-600 text-white px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-tighter hover:bg-emerald-500 transition-colors"
+           >
+             Admin Panel
+           </button>
+        </div>
+      )}
+
       {/* Main Content Area */}
       <div className="flex-grow overflow-hidden pb-[88px]">
         {renderTab()}
@@ -211,3 +225,4 @@ const MainLayout: React.FC<MainLayoutProps> = ({
 };
 
 export default MainLayout;
+  
