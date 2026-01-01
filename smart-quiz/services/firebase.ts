@@ -1,6 +1,6 @@
 
 import { initializeApp } from "firebase/app";
-import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentSingleTabManager, terminate, clearIndexedDbPersistence } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 
@@ -18,13 +18,29 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const storage = getStorage(app);
 
-// Improved settings for better connectivity and offline support
-export const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({
-    tabManager: persistentMultipleTabManager()
-  }),
-  experimentalForceLongPolling: true,
-  ignoreUndefinedProperties: true
-});
+let dbInstance;
+try {
+  // Safe initialization for mobile environments
+  dbInstance = initializeFirestore(app, {
+    localCache: persistentLocalCache({
+      tabManager: persistentSingleTabManager()
+    })
+  });
+} catch (e) {
+  console.warn("Firestore persistence failed, falling back to basic setup", e);
+  dbInstance = getFirestore(app);
+}
+
+export const db = dbInstance;
+
+export const refreshFirestore = async () => {
+  try {
+    await terminate(db);
+    await clearIndexedDbPersistence(db);
+    window.location.reload();
+  } catch (e) {
+    window.location.reload();
+  }
+};
 
 export default app;
