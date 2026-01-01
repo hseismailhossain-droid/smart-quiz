@@ -10,8 +10,10 @@ import ProgressTab from './ProgressTab';
 import QuizConfigModal from './QuizConfigModal';
 import EditProfileModal from './EditProfileModal';
 import { UserProfile, QuizResult, Question, Notification, Lesson } from '../types';
-import { X, ArrowLeft, BellOff, BookOpen, Clock, PlayCircle } from 'lucide-react';
+import { X, ArrowLeft, BellOff, BookOpen, Clock, PlayCircle, CheckCircle2 } from 'lucide-react';
 import { Language } from '../services/translations';
+import { db } from '../services/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 
 interface MainLayoutProps {
   user: UserProfile;
@@ -42,7 +44,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   const [activeTab, setActiveTab] = useState<'home' | 'community' | 'exam' | 'progress' | 'leaderboard' | 'history'>('home');
   const [showConfig, setShowConfig] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  // Fixed: Updated tab union type to include 'wallet'
   const [profileModal, setProfileModal] = useState<{show: boolean, tab: 'profile' | 'report' | 'privacy' | 'wallet'}>({show: false, tab: 'profile'});
   
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
@@ -61,6 +62,23 @@ const MainLayout: React.FC<MainLayoutProps> = ({
     setSelectedQuizId(quizId || null);
     setSelectedCollection(collectionName);
     setShowConfig(true);
+  };
+
+  const handleMarkAllRead = async () => {
+    // Optimistic UI update
+    const unreadIds = notifications.filter(n => !n.isRead).map(n => n.id);
+    if (unreadIds.length === 0) return;
+    
+    // Cloud update could be done via a loop or Cloud Function, 
+    // for simple web client we loop through unread ones.
+    try {
+      unreadIds.forEach(async (id) => {
+        await updateDoc(doc(db, 'notifications', id), { isRead: true });
+      });
+      // Notifications will auto-update via listener in App.tsx
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const renderTab = () => {
@@ -83,6 +101,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({
       </div>
     );
   };
+
+  const unreadCount = notifications.filter(n => !n.isRead).length;
 
   return (
     <div className="h-full w-full bg-slate-50 flex flex-col max-w-md mx-auto relative border-x border-gray-100 overflow-hidden">
@@ -114,7 +134,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({
         <EditProfileModal 
           user={user} initialTab={profileModal.tab} 
           onClose={() => setProfileModal({...profileModal, show: false})} 
-          onUpdate={onUpdateProfile} 
+          onUpdate={onUpdateProfile}
+          onLogout={onLogout}
         />
       )}
 
@@ -150,16 +171,29 @@ const MainLayout: React.FC<MainLayoutProps> = ({
         <div className="fixed inset-0 bg-black/60 z-[3000] backdrop-blur-md flex items-end justify-center animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-md rounded-t-[50px] p-8 animate-in slide-in-from-bottom-24 max-h-[85vh] flex flex-col shadow-2xl border-t border-white/20 safe-pb">
             <div className="flex justify-between items-center mb-8">
-              <h3 className="text-2xl font-black text-slate-900">নোটিফিকেশন</h3>
-              <button onClick={() => setShowNotifications(false)} className="p-3 bg-slate-50 rounded-full text-slate-400 active:scale-90"><X size={20} /></button>
+              <div>
+                <h3 className="text-2xl font-black text-slate-900">নোটিফিকেশন</h3>
+                {unreadCount > 0 && <p className="text-[10px] text-emerald-600 font-black uppercase tracking-widest mt-1">{unreadCount}টি নতুন</p>}
+              </div>
+              <div className="flex gap-2">
+                 {unreadCount > 0 && (
+                   <button onClick={handleMarkAllRead} className="p-3 bg-emerald-50 text-emerald-700 rounded-2xl active:scale-90" title="Mark all read">
+                     <CheckCircle2 size={20} />
+                   </button>
+                 )}
+                 <button onClick={() => setShowNotifications(false)} className="p-3 bg-slate-50 rounded-full text-slate-400 active:scale-90"><X size={20} /></button>
+              </div>
             </div>
             <div className="flex-grow overflow-y-auto space-y-4 no-scrollbar pb-10">
               {notifications.map(n => (
-                <div key={n.id} className="p-6 bg-slate-50/50 rounded-[32px] border border-slate-100 relative overflow-hidden group hover:bg-white transition-all">
-                  <div className="absolute top-0 left-0 w-1.5 h-full bg-emerald-600"></div>
-                  <h4 className="font-black text-slate-800 text-sm">{n.title}</h4>
+                <div key={n.id} className={`p-6 rounded-[32px] border relative overflow-hidden group hover:bg-white transition-all ${n.isRead ? 'bg-slate-50/50 border-slate-100 opacity-70' : 'bg-emerald-50/30 border-emerald-100 shadow-sm'}`}>
+                  {!n.isRead && <div className="absolute top-0 left-0 w-1.5 h-full bg-emerald-600"></div>}
+                  <h4 className={`font-black text-sm ${n.isRead ? 'text-slate-700' : 'text-slate-900'}`}>{n.title}</h4>
                   <p className="text-xs text-slate-500 mt-1.5 leading-relaxed font-medium">{n.message}</p>
-                  <p className="text-[9px] font-black text-slate-300 mt-3 uppercase tracking-widest">{n.time || 'এইমাত্র'}</p>
+                  <div className="flex items-center gap-2 mt-3">
+                     <Clock size={10} className="text-slate-300" />
+                     <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">{n.time || 'এইমাত্র'}</p>
+                  </div>
                 </div>
               ))}
               {notifications.length === 0 && (
