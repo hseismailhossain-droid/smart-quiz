@@ -1,0 +1,12 @@
+{
+  "name": "Smart Quiz Pro",
+  "short_name": "SmartQuiz",
+  "description": "The ultimate education and quiz platform for BCS, Admission, and all classes.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ],
+  "theme_color": "#065f46",
+  "background_color": "#ffffff"
+}
