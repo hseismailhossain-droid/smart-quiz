@@ -11,9 +11,17 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ history }) => {
   const [activeSubTab, setActiveSubTab] = React.useState<'marked' | 'mistakes' | 'exams'>('exams');
 
   const exams = history?.exams || [];
-  // Aggregate mistakes from all exams in history to ensure the Mistakes tab is populated
-  // Fixed: Added explicit type string to 's' to resolve "unknown" type error with JSON.parse on line 15 (based on file content count)
-  const mistakes = Array.from(new Set(exams.flatMap(e => e.mistakes || []).map(m => JSON.stringify(m)))).map((s: string) => JSON.parse(s));
+  
+  // Extract unique mistakes from exams history efficiently
+  const mistakes = React.useMemo(() => {
+    const allMistakes = exams.flatMap(e => e.mistakes || []);
+    const unique = new Map<string, Question>();
+    allMistakes.forEach(q => {
+      if (q && q.question) unique.set(q.question, q);
+    });
+    return Array.from(unique.values());
+  }, [exams]);
+
   const marked = history?.marked || [];
 
   const renderContent = () => {
@@ -36,7 +44,7 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ history }) => {
               </div>
               <div className="text-right">
                 <p className="text-2xl font-black text-emerald-700 leading-none">{res.score}/{res.total}</p>
-                <p className="text-[9px] text-slate-400 font-black uppercase mt-1">পয়েন্ট: +{Number(res.score) * 10}</p>
+                <p className="text-[9px] text-slate-400 font-black uppercase mt-1">পয়েন্ট: +{Math.max(0, Math.floor(res.score * 10))}</p>
               </div>
             </div>
           ))}
