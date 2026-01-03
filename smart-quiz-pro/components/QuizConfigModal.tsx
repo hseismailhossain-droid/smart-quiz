@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X, Settings, Clock, Hash, Zap, HelpCircle, Play, Wallet, Smartphone, ShieldCheck, CheckCircle2, Timer } from 'lucide-react';
+import { X, Settings, Clock, Hash, Zap, HelpCircle, Play, Wallet, Smartphone, ShieldCheck, CheckCircle2, Timer, Edit3 } from 'lucide-react';
 
 interface QuizConfigModalProps {
   subject: string;
@@ -13,6 +13,7 @@ interface QuizConfigModalProps {
 
 const QuizConfigModal: React.FC<QuizConfigModalProps> = ({ subject, isLive, isPaid, entryFee, onClose, onStart }) => {
   const [numQuestions, setNumQuestions] = useState(isLive || isPaid ? 25 : 10);
+  const [showCustomInput, setShowCustomInput] = useState(false);
   const [timePerQuestion, setTimePerQuestion] = useState(isLive || isPaid ? 15 : 20);
   const [payoutNumber, setPayoutNumber] = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
@@ -25,6 +26,8 @@ const QuizConfigModal: React.FC<QuizConfigModalProps> = ({ subject, isLive, isPa
 
   const handleStart = () => {
     if (isPaid && !payoutNumber.trim()) return alert("পুরস্কার পাওয়ার জন্য একটি মোবাইল নাম্বার দিন।");
+    if (numQuestions <= 0) return alert("সঠিক প্রশ্নের সংখ্যা দিন।");
+    
     if (isPaid && !showConfirm) {
       setShowConfirm(true);
       return;
@@ -111,17 +114,21 @@ const QuizConfigModal: React.FC<QuizConfigModalProps> = ({ subject, isLive, isPa
                 )}
 
                 <div>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Hash size={18} className="text-slate-400" />
-                    <span className="text-sm font-black text-slate-800 uppercase tracking-widest">কয়টি প্রশ্ন চান?</span>
+                  <div className="flex justify-between items-center mb-4">
+                    <div className="flex items-center gap-2">
+                      <Hash size={18} className="text-slate-400" />
+                      <span className="text-sm font-black text-slate-800 uppercase tracking-widest">কয়টি প্রশ্ন চান?</span>
+                    </div>
+                    {showCustomInput && <span className="text-[9px] font-black text-emerald-600 uppercase tracking-tighter bg-emerald-50 px-2 py-1 rounded-md">কাস্টম মোড</span>}
                   </div>
+                  
                   <div className="grid grid-cols-4 gap-3">
                     {[10, 25, 50, 100].map((num) => (
                       <button
                         key={num}
-                        onClick={() => setNumQuestions(num)}
+                        onClick={() => { setNumQuestions(num); setShowCustomInput(false); }}
                         className={`py-4 rounded-[20px] font-black text-sm transition-all shadow-sm ${
-                          numQuestions === num 
+                          numQuestions === num && !showCustomInput
                             ? `${bgColor} text-white shadow-lg` 
                             : 'bg-slate-50 text-slate-400 border border-slate-100 hover:bg-slate-100'
                         }`}
@@ -129,7 +136,34 @@ const QuizConfigModal: React.FC<QuizConfigModalProps> = ({ subject, isLive, isPa
                         {num}
                       </button>
                     ))}
+                    <button
+                      onClick={() => setShowCustomInput(true)}
+                      className={`py-4 rounded-[20px] font-black text-[10px] uppercase transition-all shadow-sm ${
+                        showCustomInput
+                          ? `${bgColor} text-white shadow-lg` 
+                          : 'bg-slate-50 text-slate-400 border border-slate-100 hover:bg-slate-100'
+                      }`}
+                    >
+                      কাস্টম
+                    </button>
                   </div>
+
+                  {showCustomInput && (
+                    <div className="mt-4 animate-in slide-in-from-top-2 duration-300">
+                      <div className="relative group">
+                        <Edit3 className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-600 transition-colors" size={16} />
+                        <input 
+                          type="number" 
+                          inputMode="numeric"
+                          value={numQuestions} 
+                          onChange={(e) => setNumQuestions(Math.max(1, parseInt(e.target.value) || 0))} 
+                          placeholder="প্রশ্নের সংখ্যা লিখুন..."
+                          className="w-full bg-slate-50 p-4 pl-12 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 focus:bg-white focus:border-emerald-300 transition-all text-sm"
+                        />
+                      </div>
+                      <p className="text-[9px] text-slate-400 font-bold mt-2 px-2 uppercase tracking-widest">আপনি চাইলে ১০ থেকে ২০০ পর্যন্ত দিতে পারেন</p>
+                    </div>
+                  )}
                 </div>
 
                 <div>
