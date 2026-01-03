@@ -156,12 +156,12 @@ const QuizConfigModal: React.FC<QuizConfigModalProps> = ({ subject, isLive, isPa
                           type="number" 
                           inputMode="numeric"
                           value={numQuestions} 
-                          onChange={(e) => setNumQuestions(Math.max(1, parseInt(e.target.value) || 0))} 
+                          onChange={(e) => setNumQuestions(Math.max(1, parseInt(e.target.value) || 1000))} 
                           placeholder="প্রশ্নের সংখ্যা লিখুন..."
                           className="w-full bg-slate-50 p-4 pl-12 rounded-2xl outline-none font-black text-slate-800 border border-slate-100 focus:bg-white focus:border-emerald-300 transition-all text-sm"
                         />
                       </div>
-                      <p className="text-[9px] text-slate-400 font-bold mt-2 px-2 uppercase tracking-widest">আপনি চাইলে ১০ থেকে ২০০ পর্যন্ত দিতে পারেন</p>
+                      <p className="text-[9px] text-slate-400 font-bold mt-2 px-2 uppercase tracking-widest">আপনি চাইলে ১ থেকে ১০০০ পর্যন্ত দিতে পারেন</p>
                     </div>
                   )}
                 </div>
