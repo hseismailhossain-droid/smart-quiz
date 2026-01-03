@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://smart-quizbd.vercel.app/sitemap.xml
